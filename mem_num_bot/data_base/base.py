@@ -14,20 +14,3 @@ async def create_tables():
     """Создаем БД."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-
-async def drop_tables():
-    """Удаляем все таблицы из БД."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
-
-async def migrate_data():
-    """Миграция данных."""
-    pass  # Реализуйте миграцию данных, если она необходима
-
-
-async def init_database():
-    """Инициализация базы данных."""
-    await create_tables()
-    await migrate_data()

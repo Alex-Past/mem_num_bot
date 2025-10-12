@@ -13,51 +13,69 @@ class User(Base):
     username: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     full_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
-    cards: Mapped[List["Card"]] = relationship(
-        "Card",
+    notes: Mapped[List["Note"]] = relationship(
+        "Note",
         back_populates="user",
         cascade="all, delete-orphan"
     )
-    exams: Mapped[List["Exam"]] = relationship(
-        "Exam",
+    categories: Mapped[List["Category"]] = relationship(
+        "Category",
         back_populates="user",
         cascade="all, delete-orphan"
     )
 
 
-class Card(Base):
-    """Модель для карточек."""
-    __tablename__ = 'cards'
+class Category(Base):
+    """Модель для таблицы категорий."""
+    __tablename__ = 'categories'
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey('users.id'),
+        nullable=False
+    )
+    name: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+        default="Общее"
+    )
+
+    user: Mapped["User"] = relationship("User", back_populates="categories")
+    notes: Mapped[List["Note"]] = relationship(
+        "Note",
+        back_populates="category",
+        cascade="all, delete-orphan"
+    )
+
+
+class Note(Base):
+    """Модель для таблицы заметок."""
+    __tablename__ = 'notes'
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey('users.id'),
+        nullable=False
+    )
+    category_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('categories.id'),
+        nullable=True
+    )
+    content_type: Mapped[str] = mapped_column(String, nullable=True)
+    content_text: Mapped[str] = mapped_column(Text, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
     file_id: Mapped[str] = mapped_column(String, nullable=True)
-    value: Mapped[str] = mapped_column(Text)
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
-    user: Mapped['User'] = relationship(back_populates='cards')
 
-
-class Exam(Base):
-    """Модель для экзаменов."""
-    __tablename__ = 'exams'
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
-    user: Mapped['User'] = relationship(back_populates='exams')
-
-    cards: Mapped[List["Card"]] = relationship(
-        secondary="exam_cards",
-        back_populates="exams"
+    user: Mapped["User"] = relationship("User", back_populates="notes")
+    category: Mapped[Optional["Category"]] = relationship(
+        "Category",
+        back_populates="notes"
     )
-
-
-class ExamCard(Base):
-    """Промежуточная модель для связи экзаменов и карточек."""
-    __tablename__ = 'exam_cards'
-
-    exam_id: Mapped[int] = mapped_column(ForeignKey('exams.id'), primary_key=True)
-    card_id: Mapped[int] = mapped_column(ForeignKey('cards.id'), primary_key=True)
-
-    exam: Mapped['Exam'] = relationship(back_populates='cards')
-    card: Mapped['Card'] = relationship(back_populates='exams')

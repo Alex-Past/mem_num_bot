@@ -1,8 +1,5 @@
-import os
-
 from datetime import datetime
 
-from decouple import config
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy.ext.asyncio import (AsyncAttrs,
@@ -11,13 +8,8 @@ from sqlalchemy.ext.asyncio import (AsyncAttrs,
                                     AsyncSession)
 
 
-DATABASE_URL = config('DATABASE_URL')  # Используйте переменную окружения для URL базы данных
-
-if DATABASE_URL is None:
-    raise Exception("DATABASE_URL environment variable not set.")
-
-engine = create_async_engine(DATABASE_URL)
-async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+engine = create_async_engine(url='sqlite+aiosqlite:///db.sqlite3')
+async_session = async_sessionmaker(engine, class_=AsyncSession)
 
 
 class Base(AsyncAttrs, DeclarativeBase):
