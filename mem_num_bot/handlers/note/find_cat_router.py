@@ -48,13 +48,13 @@ async def category_noti_process(call: CallbackQuery, state: FSMContext):
     all_notes = await find_notes_by_category_name(category_name=text_name)
     if all_notes:
         await call.message.answer(
-            f'⭐️ В категории "{text_name}" заметок: {len(all_notes)}',
+            f'⭐️ В категории "{text_name}" карточек: {len(all_notes)}',
             reply_markup=main_note_kb()
         )
         await send_many_notes(all_notes, bot, call.from_user.id)
     else:
         await call.message.answer(
-            f'Нет ни одной заметки в категории {text_name}!',
+            f'Нет ни одной карточки в категории {text_name}!',
             reply_markup=main_note_kb()
         )
 
@@ -62,13 +62,13 @@ async def category_noti_process(call: CallbackQuery, state: FSMContext):
 @find_cat_router.message(F.text == "🔍 Поиск категории")
 async def text_category_noti(message: Message, state: FSMContext):
     await state.clear()
-    all_notes = await get_notes_by_user() #(user_id=message.from_user.id)
+    all_notes = await get_notes_by_user(user_id=message.from_user.id)
     if all_notes:
         await message.answer('Введите поисковой запрос')
         await state.set_state(FindNoteStates.cat_text)
     else:
         await message.answer(
-            'У вас пока нет ни одной заметки!',
+            'У вас пока нет ни одной карточки!',
             reply_markup=main_note_kb()
         )
 
@@ -77,7 +77,7 @@ async def text_category_noti(message: Message, state: FSMContext):
 async def text_category_process(message: Message, state: FSMContext):
     text_search = message.text.strip()
     tar_category = await get_all_categories(
-        #user_id=message.from_user.id,
+        user_id=message.from_user.id,
         text_search=text_search
     )
     await state.clear()

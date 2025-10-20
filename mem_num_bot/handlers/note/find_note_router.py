@@ -17,11 +17,11 @@ class FindNoteStates(StatesGroup):
     category = State()
 
 
-@find_note_router.message(F.text == "📋 Просмотр заметок")
+@find_note_router.message(F.text == "📋 Просмотр карточек")
 async def start_views_noti(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(
-        'Выбери какие заметки отобразить',
+        'Выбери какие карточки отобразить',
         reply_markup=find_note_kb()
     )
 
@@ -29,13 +29,13 @@ async def start_views_noti(message: Message, state: FSMContext):
 @find_note_router.message(F.text == "🔍 Поиск по тексту")
 async def text_views_noti(message: Message, state: FSMContext):
     await state.clear()
-    all_notes = await get_notes_by_user() #(user_id=message.from_user.id)
+    all_notes = await get_notes_by_user(user_id=message.from_user.id)
     if all_notes:
         await message.answer('Введите поисковой запрос.')
         await state.set_state(FindNoteStates.text)
     else:
         await message.answer(
-            'У вас пока нет ни одной заметки!',
+            'У вас пока нет ни одной карточки!',
             reply_markup=main_note_kb()
         )
 
@@ -44,20 +44,20 @@ async def text_views_noti(message: Message, state: FSMContext):
 async def text_noti_process(message: Message, state: FSMContext):
     text_search = message.text.strip()
     all_notes = await get_notes_by_user(
-        # user_id=message.from_user.id,
+        user_id=message.from_user.id,
         text_search=text_search
     )
     await state.clear()
     if all_notes:
         await message.answer(
             f'📚 C поисковой фразой "{text_search}" '
-            f'было обнаружено {len(all_notes)} заметок!',
+            f'было обнаружено {len(all_notes)} карточек!',
             reply_markup=main_note_kb()
         )
         await send_many_notes(all_notes, bot, message.from_user.id)
     else:
         await message.answer(
-            'У вас пока нет ни одной заметки, '
+            'У вас пока нет ни одной карточки, '
             f'которая содержала бы в тексте "{text_search}"!',
             reply_markup=main_note_kb()
         )

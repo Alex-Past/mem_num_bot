@@ -112,17 +112,17 @@ async def send_many_notes(all_notes, bot, user_id):
 async def send_many_categories(all_category, bot, user_id):
     """Функция для отправки списка категорий."""
     for category in all_category:
-        if user_id in admins:
-            reply_markup=rule_cat_kb(category['id'])
-        else:
-            reply_markup = None
+        # if user_id in admins:
+        #     reply_markup=rule_cat_kb(category['id'])
+        # else:
+        #     reply_markup = None
         try:
             text = f"✨ Категория: <b>{category['category_name']}</b>\n\n"
             await bot.send_message(
                 text=text,
                 chat_id=user_id,
-                reply_markup=reply_markup
-                # reply_markup=rule_cat_kb(category['id'])
+                # reply_markup=reply_markup
+                reply_markup=rule_cat_kb(category['id'])
             )
         except Exception as e:
             print(f'Error: {e}')

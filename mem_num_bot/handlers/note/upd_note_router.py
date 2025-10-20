@@ -20,10 +20,10 @@ class UPDNoteStates(StatesGroup):
 async def edit_note_text_process(call: CallbackQuery, state: FSMContext):
     await state.clear()
     note_id = int(call.data.replace('edit_note_text_', ''))
-    await call.answer(f'✍️ Режим редактирования заметки')
+    await call.answer(f'✍️ Режим редактирования карточки')
     await state.update_data(note_id=note_id)
     await call.message.answer(
-        f'Отправь новое текстовое содержимое для этой заметки 👇',
+        f'Отправь новое название для этой карточки 👇',
         reply_markup=stop_fsm()
     )
     await state.set_state(UPDNoteStates.content_text)
@@ -37,7 +37,7 @@ async def confirm_edit_note_text(message: Message, state: FSMContext):
     await update_text_note(note_id=note_id, content_text=content_text)
     await state.clear()
     await message.answer(
-        f'Текст заметки с ID {note_id} успешно изменен на "{content_text}"!',
+        f'Название карточки с ID {note_id} успешно изменено на "{content_text}"!',
         reply_markup=main_note_kb()
     )
 
@@ -45,10 +45,10 @@ async def confirm_edit_note_text(message: Message, state: FSMContext):
 async def edit_note_desc_process(call: CallbackQuery, state: FSMContext):
     await state.clear()
     note_id = int(call.data.replace('edit_desc_text_', ''))
-    await call.answer(f'✍️ Режим редактирования описания заметки')
+    await call.answer(f'✍️ Режим редактирования описания карточки')
     await state.update_data(note_id=note_id)
     await call.message.answer(
-        f'Отправь новое описание для этой заметки 👇',
+        f'Отправь новое описание для этой карточки 👇',
         reply_markup=stop_fsm()
     )
     await state.set_state(UPDNoteStates.description_text)  # Исправлено состояние
@@ -63,7 +63,7 @@ async def confirm_edit_desc_text(message: Message, state: FSMContext):
     await update_desc_note(note_id=note_id, description=description)
     await state.clear()
     await message.answer(
-        f'Описание заметки с ID {note_id} успешно изменено на "{description}"!',
+        f'Описание карточки с ID {note_id} успешно изменено на "{description}"!',
         reply_markup=main_note_kb()
     )
 
@@ -73,5 +73,5 @@ async def dell_note_process(call: CallbackQuery, state: FSMContext):
     await state.clear()
     note_id = int(call.data.replace('dell_note_', ''))
     await delete_note_by_id(note_id=note_id)
-    await call.answer(f'Заметка удалена!', show_alert=True)
+    await call.answer(f'Карточка удалена!', show_alert=True)
     await call.message.delete()

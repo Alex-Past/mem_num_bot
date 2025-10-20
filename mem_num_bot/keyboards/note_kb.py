@@ -28,8 +28,8 @@ def generate_find_category_keyboard(categories):
 
 def main_note_kb():
     kb_list = [
-        [KeyboardButton(text="📝 Добавить заметку"),
-         KeyboardButton(text="📋 Просмотр заметок")],
+        [KeyboardButton(text="📝 Добавить карточку"),
+         KeyboardButton(text="📋 Просмотр карточек")],
         [KeyboardButton(text="🏠 Главное меню")]
     ]
     return ReplyKeyboardMarkup(
@@ -109,7 +109,7 @@ def main_category_kb():
     kb_list = [
         [KeyboardButton(text="📝 Добавить категорию"),
          KeyboardButton(text="📋 Список категорий")],
-        [KeyboardButton(text="📋 Просмотр заметок"),
+        [KeyboardButton(text="📋 Просмотр карточек"),
          KeyboardButton(text="🏠 Главное меню")]
     ]
     return ReplyKeyboardMarkup(
@@ -122,9 +122,9 @@ def main_category_kb():
 
 def all_category_kb():
     kb_list = [
-        [KeyboardButton(text="📝 Добавить заметку"),
+        [KeyboardButton(text="📝 Добавить карточку"),
          KeyboardButton(text="📝 Добавить категорию")],
-        [KeyboardButton(text="📋 Просмотр заметок"),
+        [KeyboardButton(text="📋 Просмотр карточек"),
          KeyboardButton(text="🏠 Главное меню")]
     ]
     return ReplyKeyboardMarkup(

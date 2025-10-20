@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 
 from create_bot import bot, notification_manager
 from keyboards.notifications_kb import create_notifications_keyboard
-from keyboards.note_kb import main_note_kb
+from keyboards.mem_kb import main_mem_kb
 
 notifications_router = Router()
 
@@ -46,6 +46,6 @@ async def notifications_back(call: CallbackQuery, state: FSMContext):
     """Возврат из настроек уведомлений."""
     await call.message.answer(
         "Главное меню:",
-        reply_markup=main_note_kb()
+        reply_markup=main_mem_kb()
     )
     await call.message.delete()

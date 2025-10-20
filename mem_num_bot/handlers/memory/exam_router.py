@@ -158,7 +158,7 @@ async def start_exam_session(call: CallbackQuery, state: FSMContext, category_id
     
     if not exam_notes:
         await call.message.answer(
-            "❌ В выбранных категориях нет заметок с описанием для экзамена!",
+            "❌ В выбранных категориях нет карточек с описанием для экзамена!",
             reply_markup=main_note_kb()
         )
         await state.clear()
@@ -203,7 +203,7 @@ async def show_next_exam_question(message: Message, state: FSMContext):
     await asyncio.sleep(0,8)
     await message.answer(
         f"Карточка {current_index + 1}/{len(exam_notes)}\n\n"
-        f"📝 Название: {current_note.get('content_text', 'Без названия')}\n\n"
+        f"{current_note.get('content_text', 'Без названия')}\n\n"
         f"Напиши описание этой карточки:",
         reply_markup=create_stop_exam_keyboard()
     )

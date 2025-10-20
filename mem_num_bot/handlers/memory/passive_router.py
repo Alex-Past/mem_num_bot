@@ -10,6 +10,7 @@ from data_base.dao import get_all_categories, get_notes_by_categories
 from keyboards.passive_kb import create_passive_categories_keyboard
 from create_bot import bot
 from keyboards.note_kb import main_note_kb
+from keyboards.mem_kb import main_mem_kb
 from utils_bot.utils import send_message_user
 
 passive_router = Router()
@@ -103,7 +104,7 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
     
     if not notes:
         await call.message.answer(
-            "❌ В выбранных категориях нет заметок!",
+            "❌ В выбранных категориях нет карточек!",
             reply_markup=main_note_kb()
         )
         await state.clear()
@@ -189,8 +190,8 @@ async def send_random_passive_card(user_id: int):
     message = await bot.send_message(
         user_id,
         f"📖 Пассивное обучение\n\n"
-        f"Категория: {random_note.get('category_name', 'Без категории')}\n"
-        f"Название: {random_note.get('content_text', 'Без названия')}\n\n"
+        # f"Категория: {random_note.get('category_name', 'Без категории')}\n"
+        f"{random_note.get('content_text', 'Без названия')}\n\n"
         f"Напиши описание этой карточки:",
         reply_markup=create_stop_passive_keyboard()
     )
@@ -211,7 +212,7 @@ async def stop_passive_learning(message: Message, state: FSMContext):
     
     await message.answer(
         "⏹ Пассивное обучение остановлено!",
-        reply_markup=main_note_kb()
+        reply_markup=main_mem_kb()
     )
     await state.clear()
 

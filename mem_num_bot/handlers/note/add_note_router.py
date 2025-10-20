@@ -22,17 +22,17 @@ class AddNoteStates(StatesGroup):
     check_state = State()
 
 
-@add_note_router.message(F.text == '📝 Заметки')
+@add_note_router.message(F.text == "📝 Карточки")
 async def start_note(message: Message, state: FSMContext):
     await state.clear()
     await message.answer('Ты в меню заметок. Выбери необходимое действие.',
                          reply_markup=main_note_kb())
 
 
-@add_note_router.message(F.text == '📝 Добавить заметку')
+@add_note_router.message(F.text == "📝 Добавить карточку")
 async def category_views_noti(message: Message, state: FSMContext):
     await state.clear()
-    all_category = await get_all_categories()#(user_id=message.from_user.id)
+    all_category = await get_all_categories(user_id=message.from_user.id)
     await message.answer(
         '⭐️ Добавьте новую категорию с помощью меню',
         reply_markup=main_category_kb()
@@ -74,9 +74,9 @@ async def handle_note_description(message: Message, state: FSMContext):
         'content_text': data.get('content_text'),
         'file_id': data.get('file_id')
     }    
-    text = (f"Новая заметка 📚\n\n"
+    text = (f"Новая карточка 📚\n\n"
             f"Категория ⭐️ <u>{category['category_name']}</u>\n"
-            "Текст:\n"
+            "Название:\n"
             f"<b>{content_info['content_text'] if content_info['content_text'] else 'Отсутствует'}</b>\n\n"
             f"Описание:\n"
             f"<b>{description if description else 'Отсутствует'}</b>\n\n"
@@ -103,7 +103,7 @@ async def handle_user_note_message(message: Message, state: FSMContext):
     if content_info.get('content_type'):
         await state.update_data(**content_info)                
         await message.answer(
-            "📝 Теперь добавьте описание к заметке "
+            "📝 Теперь добавьте описание к карточке "
             "(можете отправить пустое сообщение, если описание не нужно):",
             reply_markup=stop_fsm()
         )
@@ -128,5 +128,5 @@ async def confirm_add_note(message: Message, state: FSMContext):
         file_id=note.get('file_id'),
         description=note.get('description', '')
     )
-    await message.answer('Заметка успешно добавлена!', reply_markup=main_note_kb())
+    await message.answer('Карточка успешно добавлена!', reply_markup=main_note_kb())
     await state.clear()

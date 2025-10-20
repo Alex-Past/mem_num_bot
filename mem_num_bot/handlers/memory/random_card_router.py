@@ -20,7 +20,7 @@ async def show_random_card(message: Message, state: FSMContext):
     
     if notes_count == 0:
         await message.answer(
-            "📝 У вас пока нет заметок. Создайте первую заметку!",
+            "📝 У вас пока нет карточек. Создайте первую карточку!",
             reply_markup=main_note_kb()
         )
         return
@@ -30,7 +30,7 @@ async def show_random_card(message: Message, state: FSMContext):
     
     if not random_note:
         await message.answer(
-            "❌ Не удалось получить случайную заметку",
+            "❌ Не удалось получить случайную карточку",
             reply_markup=main_note_kb()
         )
         return
@@ -39,7 +39,7 @@ async def show_random_card(message: Message, state: FSMContext):
     await state.update_data(random_note=random_note)
     
     # Формируем заголовок (используем первые 100 символов текста или описание)
-    preview_text = random_note.get('content_text') or "Заметка без текста"
+    preview_text = random_note.get('content_text') or "Карточка без текста"
     if len(preview_text) > 100:
         preview_text = preview_text[:100] + "..."
     
@@ -58,13 +58,13 @@ async def show_full_random_note(call: CallbackQuery, state: FSMContext):
     random_note = data.get('random_note')
     
     if not random_note:
-        await call.answer("❌ Данные заметки не найдены", show_alert=True)
+        await call.answer("❌ Данные карточки не найдены", show_alert=True)
         return
     
     # Формируем полный текст заметки
     text = (f"🎲 Случайная карточка\n\n"
             f"Категория: {random_note['category_name']}\n"
-            f"Текст:\n{random_note['content_text'] or 'Отсутствует'}\n\n"
+            f"Название:\n{random_note['content_text'] or 'Отсутствует'}\n\n"
             f"Описание:\n{random_note['description'] or 'Отсутствует'}")
     
     # Отправляем полную версию

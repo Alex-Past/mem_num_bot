@@ -299,13 +299,13 @@ async def delete_note_by_id(session, note_id: int) -> Optional[Note]:
 @connection
 async def get_notes_by_user(
     session,
-    # user_id: int,
+    user_id: int,
     text_search: Optional[str] = None,
     category_id: Optional[int] = None
 ) -> List[Dict[str, Any]]:
     """Получаем заметки пользователя."""
     try:
-        stmt = select(Note)#.filter(Note.user_id == user_id)
+        stmt = select(Note).filter(Note.user_id == user_id)
 
         if category_id is not None:
             stmt = stmt.filter(Note.category_id == category_id)
