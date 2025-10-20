@@ -84,11 +84,8 @@ async def send_message_user(
 
 async def send_many_notes(all_notes, bot, user_id):
     """Функция для отправки списка заметок."""
-    for note in all_notes:
-        if user_id in admins:
-            kb = rule_note_kb(note['id'])  # Вызываем функцию для администратора
-        else:
-            kb = None
+    for note in all_notes:        
+        kb = rule_note_kb(note['id'])         
         try:
             category = await get_category_by_id(note['category_id'])
             cat_name = category['category_name']
@@ -103,8 +100,7 @@ async def send_many_notes(all_notes, bot, user_id):
                 content_text=text,
                 user_id=user_id,
                 file_id=note['file_id'],
-                kb=kb
-                # kb=rule_note_kb(note['id'])
+                kb=kb                
             )
         except Exception as e:
             print(f'Error: {e}')

@@ -1,12 +1,14 @@
+import logging
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Dict, Any, Optional
 
-from create_bot import logger
+# from create_bot import logger
 from .base import connection
 from .models import Category, User, Note
 
+logger = logging.getLogger(__name__)
 
 @connection
 async def set_user(
@@ -113,12 +115,12 @@ async def delete_category(
 @connection
 async def get_all_categories(
     session,
-    # user_id: int,
+    user_id: int,
     text_search: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """Получаем список всех категорий пользователя."""
     try:
-        stmt = select(Category)#.filter_by(user_id=user_id)
+        stmt = select(Category).filter_by(user_id=user_id)
         result = await session.execute(stmt)
         categories = result.scalars().all()
         if not categories:
@@ -432,3 +434,116 @@ async def get_random_note(session, user_id: int) -> Optional[Dict[str, Any]]:
     except SQLAlchemyError as e:
         logger.error(f"Ошибка при получении случайной заметки: {e}")
         return None
+    
+    
+@connection
+async def get_notes_by_categories(
+    session, 
+    user_id: int, 
+    category_ids: list
+) -> List[Dict[str, Any]]:
+    """Получаем заметки по выбранным категориям."""
+    try:
+        # Используем selectinload для загрузки связанных данных
+        from sqlalchemy.orm import selectinload
+        
+        stmt = (
+            select(Note)
+            .options(selectinload(Note.category))
+            .filter(Note.user_id == user_id)
+        )
+        
+        if category_ids:
+            stmt = stmt.filter(Note.category_id.in_(category_ids))
+        
+        result = await session.execute(stmt)
+        notes = result.scalars().all()
+        
+        note_list = []
+        for note in notes:
+            # Теперь category загружена через selectinload
+            category_name = note.category.name if note.category else "Без категории"
+            
+            note_list.append({
+                'id': note.id,
+                'category_name': category_name,
+                'content_type': note.content_type,
+                'content_text': note.content_text,
+                'description': note.description,
+                'file_id': note.file_id,
+                'correct_answers': note.correct_answers,
+                'wrong_answers': note.wrong_answers
+            })
+        
+        return note_list
+        
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка при получении заметок по категориям: {e}")
+        return []
+
+
+@connection
+async def update_note_stats(session, note_id: int, correct: bool):
+    """Обновляем статистику заметки."""
+    try:
+        note = await session.get(Note, note_id)
+        if not note:
+            logger.error(f"Заметка с ID {note_id} не найдена.")
+            return None
+
+        if correct:
+            note.correct_answers += 1
+        else:
+            note.wrong_answers += 1
+
+        await session.commit()
+        logger.info(f"Статистика заметки {note_id} обновлена!")
+        return note
+        
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка при обновлении статистики заметки: {e}")
+        await session.rollback()
+
+
+@connection
+async def get_difficult_notes(session, user_id: int, threshold: float = 0.5) -> List[Dict[str, Any]]:
+    """Получаем сложные карточки (где процент успеха < threshold)."""
+    try:
+        stmt = (
+            select(Note)
+            .options(selectinload(Note.category))
+            .filter(Note.user_id == user_id)
+        )
+        
+        result = await session.execute(stmt)
+        notes = result.scalars().all()
+        
+        difficult_notes = []
+        for note in notes:
+            total_attempts = note.correct_answers + note.wrong_answers
+            
+            # Исключаем карточки без попыток
+            if total_attempts == 0:
+                continue
+                
+            success_rate = note.correct_answers / total_attempts
+            
+            if success_rate < threshold:
+                category_name = note.category.name if note.category else "Без категории"
+                difficult_notes.append({
+                    'id': note.id,
+                    'category_name': category_name,
+                    'content_type': note.content_type,
+                    'content_text': note.content_text,
+                    'description': note.description,
+                    'file_id': note.file_id,
+                    'correct_answers': note.correct_answers,
+                    'wrong_answers': note.wrong_answers,
+                    'success_rate': success_rate
+                })
+        
+        return difficult_notes
+        
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка при получении сложных заметок: {e}")
+        return []          

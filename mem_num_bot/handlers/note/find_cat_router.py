@@ -24,7 +24,7 @@ class FindNoteStates(StatesGroup):
 @find_cat_router.message(F.text == "📝 Категории")
 async def category_views_noti(message: Message, state: FSMContext):
     await state.clear()
-    all_category = await get_all_categories()#(user_id=message.from_user.id)
+    all_category = await get_all_categories(user_id=message.from_user.id)
     if all_category:
         await message.answer(
             f'Всего категорий: {len(all_category)}',

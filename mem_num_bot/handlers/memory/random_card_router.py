@@ -47,7 +47,7 @@ async def show_random_card(message: Message, state: FSMContext):
     await message.answer(
         f"🎲 Случайная карточка\n\n"
         # f"Категория: {random_note['category_name']}\n"
-        f"Текст: {preview_text}",
+        f"Название: {preview_text}",
         reply_markup=create_random_card_keyboard()
     )
 

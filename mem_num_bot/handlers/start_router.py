@@ -9,17 +9,12 @@ from keyboards.other_kb import main_kb
 from keyboards.note_kb import main_note_kb
 from keyboards.mem_kb import main_mem_kb
 
-SPACE=config("SPACE")
 
 start_router = Router()
 
 
 @start_router.message(CommandStart())
-async def cmd_start(message: Message):
-    await message.answer("Пожалуйста, введите код:")
-
-@start_router.message(F.text == SPACE)
-async def process_check_space(message: Message):    
+async def cmd_start(message: Message): 
     await set_user(
         tg_id=message.from_user.id,
         username=message.from_user.username,

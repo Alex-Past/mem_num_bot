@@ -2,9 +2,11 @@ import asyncio
 
 from aiogram.types import BotCommand, BotCommandScopeDefault
 
-from create_bot import bot, dp, admins
+from create_bot import bot, dp, admins, notification_manager
 from data_base.base import create_tables
 from handlers.memory.random_card_router import random_card_router
+from handlers.memory.exam_router import exam_router
+from handlers.memory.passive_router import passive_router
 from handlers.note.add_cat_router import add_cat_router
 from handlers.note.add_note_router import add_note_router
 from handlers.note.find_note_router import find_note_router
@@ -13,6 +15,7 @@ from handlers.note.upd_note_router import upd_note_router
 from handlers.note.view_cat_router import view_cat_router
 from handlers.note.upd_cat_router import upd_cat_router
 from handlers.start_router import start_router
+from handlers.notifications_router import notifications_router
 
 
 async def set_commands():
@@ -25,6 +28,9 @@ async def set_commands():
 async def start_bot():
     await set_commands()
     await create_tables()
+
+    await notification_manager.start()
+
     for admin_id in admins:
         try:
             await bot.send_message(admin_id, f'Бот запущен.')
@@ -33,6 +39,9 @@ async def start_bot():
 
 
 async def stop_bot():
+
+    notification_manager.is_running = False
+
     for admin_id in admins:
         try:
             await bot.send_message(admin_id, 'Бот остановлен.')
@@ -50,6 +59,9 @@ async def main():
     dp.include_router(upd_cat_router)
     dp.include_router(upd_note_router)
     dp.include_router(random_card_router)
+    dp.include_router(exam_router)
+    dp.include_router(passive_router)
+    dp.include_router(notifications_router)
     
     dp.startup.register(start_bot)
     dp.shutdown.register(stop_bot)
@@ -66,3 +78,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+    

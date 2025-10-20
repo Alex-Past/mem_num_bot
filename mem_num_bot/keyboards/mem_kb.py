@@ -5,8 +5,10 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 def main_mem_kb():
     kb_list = [
         [KeyboardButton(text="🎲 Случайная карточка"),
-         KeyboardButton(text="Экзамен")],
-        [KeyboardButton(text="🏠 Главное меню")]
+         KeyboardButton(text="📚 Экзамен"),
+         KeyboardButton(text="📖 Пассивно")],
+        [KeyboardButton(text="🏠 Главное меню"),
+         KeyboardButton(text="🔔 Уведомления")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=kb_list,

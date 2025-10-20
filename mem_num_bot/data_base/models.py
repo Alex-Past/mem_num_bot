@@ -73,6 +73,8 @@ class Note(Base):
     content_text: Mapped[str] = mapped_column(Text, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
     file_id: Mapped[str] = mapped_column(String, nullable=True)
+    correct_answers: Mapped[int] = mapped_column(Integer, default=0)
+    wrong_answers: Mapped[int] = mapped_column(Integer, default=0)
 
     user: Mapped["User"] = relationship("User", back_populates="notes")
     category: Mapped[Optional["Category"]] = relationship(

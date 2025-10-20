@@ -12,7 +12,7 @@ view_cat_router = Router()
 
 @view_cat_router.message(F.text == "📋 Список категорий")
 async def all_views_category(message: Message):
-    all_category = await get_all_categories() #(user_id=message.from_user.id)
+    all_category = await get_all_categories(user_id=message.from_user.id)
     if all_category:
         await message.answer(
             f'⭐️ Найдено всего {len(all_category)} категорий',
