@@ -2,7 +2,8 @@ import asyncio
 
 from aiogram.types import BotCommand, BotCommandScopeDefault
 
-from create_bot import bot, dp, admins, notification_manager
+from create_bot import bot, dp, admins
+from create_bot import notification_manager
 from data_base.base import create_tables
 from handlers.memory.random_card_router import random_card_router
 from handlers.memory.exam_router import exam_router

@@ -8,9 +8,15 @@ from sqlalchemy.ext.asyncio import (AsyncAttrs,
                                     AsyncSession)
 
 
-engine = create_async_engine(url='sqlite+aiosqlite:///db.sqlite3')
-async_session = async_sessionmaker(engine, class_=AsyncSession)
+# engine = create_async_engine(url='sqlite+aiosqlite:///data/db.sqlite3')
 
+import os
+
+# Покажите какой путь используете
+db_path = "/data/db.sqlite3"  # или ваш текущий путь
+
+engine = create_async_engine(url=f'sqlite+aiosqlite:///{db_path}')
+async_session = async_sessionmaker(engine, class_=AsyncSession)
 
 class Base(AsyncAttrs, DeclarativeBase):
     """Базовый класс моделей."""

@@ -24,7 +24,27 @@ def create_passive_categories_keyboard(categories, selected_categories=None):
         InlineKeyboardButton(text="🎯 Все категории", callback_data="passive_category_all")
     ])
     keyboard.append([
-        InlineKeyboardButton(text="🚀 Начать обучение", callback_data="start_passive")
+        InlineKeyboardButton(text="🚀 Продолжить", callback_data="start_passive")
     ])
+    
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def create_interval_keyboard():
+    """Клавиатура для выбора интервала."""
+    keyboard = [
+        [
+            InlineKeyboardButton(text="⏱ 30 минут", callback_data="interval_30min")
+        ],
+        [
+            InlineKeyboardButton(text="⏱ 1 час", callback_data="interval_1hour")
+        ],
+        [
+            InlineKeyboardButton(text="⏱ 2 часа", callback_data="interval_2hours")
+        ],
+        [
+            InlineKeyboardButton(text="⏱ 3 часа", callback_data="interval_3hours")
+        ]
+    ]
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)

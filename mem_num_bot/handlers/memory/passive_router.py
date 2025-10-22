@@ -4,10 +4,10 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 import asyncio
-from datetime import datetime, timedelta
+import random
 
 from data_base.dao import get_all_categories, get_notes_by_categories
-from keyboards.passive_kb import create_passive_categories_keyboard
+from keyboards.passive_kb import create_passive_categories_keyboard, create_interval_keyboard
 from create_bot import bot
 from keyboards.note_kb import main_note_kb
 from keyboards.mem_kb import main_mem_kb
@@ -20,6 +20,7 @@ active_passive_sessions = {}
 
 class PassiveStates(StatesGroup):
     choosing_categories = State()
+    choosing_interval = State()
     in_session = State()
 
 
@@ -32,7 +33,7 @@ async def start_passive(message: Message, state: FSMContext):
     if not categories:
         await message.answer(
             "❌ У вас нет категорий для пассивного обучения.",
-            reply_markup=main_note_kb()
+            reply_mup=main_note_kb()
         )
         return
     
@@ -55,7 +56,8 @@ async def process_passive_category_selection(call: CallbackQuery, state: FSMCont
         # Выбраны все категории
         categories = await get_all_categories(user_id=call.from_user.id)
         category_ids = [cat['id'] for cat in categories]
-        await start_passive_session(call, state, category_ids)
+        await state.update_data(selected_categories=category_ids)
+        await show_interval_selection(call, state)
         return
     
     category_id = int(call.data.replace('passive_category_', ''))
@@ -85,10 +87,43 @@ async def start_passive_with_selected(call: CallbackQuery, state: FSMContext):
         await call.answer("❌ Выберите хотя бы одну категорию!", show_alert=True)
         return
     
-    await start_passive_session(call, state, selected_categories)
+    await show_interval_selection(call, state)
 
 
-async def start_passive_session(call: CallbackQuery, state: FSMContext, category_ids: list):
+async def show_interval_selection(call: CallbackQuery, state: FSMContext):
+    """Показ выбора интервала."""
+    await call.message.answer(
+        "⏰ Выберите интервал отправки карточек:",
+        reply_markup=create_interval_keyboard()
+    )
+    await state.set_state(PassiveStates.choosing_interval)
+
+
+@passive_router.callback_query(PassiveStates.choosing_interval, F.data.startswith('interval_'))
+async def process_interval_selection(call: CallbackQuery, state: FSMContext):
+    """Обработка выбора интервала."""
+    interval_map = {
+        'interval_30min': 1800,  # 30 минут
+        'interval_1hour': 3600,  # 1 час
+        'interval_2hours': 7200,  # 2 часа
+        'interval_3hours': 10800  # 3 часа
+    }
+    
+    interval_key = call.data
+    interval_seconds = interval_map.get(interval_key)
+    
+    if not interval_seconds:
+        await call.answer("❌ Неверный интервал", show_alert=True)
+        return
+    
+    # Получаем выбранные категории
+    data = await state.get_data()
+    selected_categories = data.get('selected_categories', [])
+    
+    await start_passive_session(call, state, selected_categories, interval_seconds)
+
+
+async def start_passive_session(call: CallbackQuery, state: FSMContext, category_ids: list, interval_seconds: int):
     """Запуск пассивной сессии."""
     user_id = call.from_user.id
     
@@ -114,15 +149,25 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
     active_passive_sessions[user_id] = {
         'active': True,
         'notes': notes,
-        'category_ids': category_ids,
-        'last_message_id': None
+        'interval': interval_seconds,
+        'last_message_id': None,
+        'current_note': None
     }
+    
+    # Показываем информацию о запуске
+    interval_text = {
+        1800: "30 минут",
+        3600: "1 час", 
+        7200: "2 часа",
+        10800: "3 часа"
+    }.get(interval_seconds, f"{interval_seconds//3600} часа")
     
     await call.message.answer(
         f"📖 Пассивное обучение запущено!\n"
-        f"Категории: {len(category_ids)}\n"
-        f"Карточек: {len(notes)}\n\n"
-        f"Я буду присылать случайные карточки каждый час с 8:00 до 23:00.\n"
+        f"• Категории: {len(category_ids)}\n"
+        f"• Карточек: {len(notes)}\n"
+        f"• Интервал: {interval_text}\n\n"
+        f"Я буду присылать случайные карточки с выбранным интервалом.\n"
         f"Вы можете остановить в любой момент.",
         reply_markup=create_stop_passive_keyboard()
     )
@@ -147,13 +192,16 @@ async def passive_worker(user_id: int):
     """Фоновая задача для отправки карточек по расписанию."""
     while user_id in active_passive_sessions and active_passive_sessions[user_id]['active']:
         try:
-            # Ждем 1 час
-            await asyncio.sleep(3600)
+            session = active_passive_sessions[user_id]
+            interval = session.get('interval', 3600)  # По умолчанию 1 час
             
-            # Проверяем время (8:00 - 23:00)
-            current_hour = datetime.now().hour
-            if 8 <= current_hour <= 23:
-                if user_id in active_passive_sessions and active_passive_sessions[user_id]['active']:
+            # Ждем выбранный интервал
+            await asyncio.sleep(interval)
+            
+            # Проверяем, активна ли еще сессия
+            if user_id in active_passive_sessions and active_passive_sessions[user_id]['active']:
+                # Проверяем, нет ли активной карточки (пользователь еще не ответил)
+                if not session.get('current_note'):
                     await send_random_passive_card(user_id)
                     
         except Exception as e:
@@ -170,7 +218,6 @@ async def send_random_passive_card(user_id: int):
     if not session['active']:
         return
     
-    import random
     notes = session['notes']
     
     if not notes:
@@ -190,7 +237,6 @@ async def send_random_passive_card(user_id: int):
     message = await bot.send_message(
         user_id,
         f"📖 Пассивное обучение\n\n"
-        # f"Категория: {random_note.get('category_name', 'Без категории')}\n"
         f"{random_note.get('content_text', 'Без названия')}\n\n"
         f"Напиши описание этой карточки:",
         reply_markup=create_stop_passive_keyboard()
@@ -242,7 +288,8 @@ async def check_passive_answer(message: Message, state: FSMContext):
     else:
         await message.answer("❌ Не верно!")
     
-    await asyncio.sleep(0,8)
+    # Задержка перед показом полной карточки
+    await asyncio.sleep(0.8)
     
     # Показываем полную карточку в любом случае
     full_card_text = (
@@ -261,5 +308,5 @@ async def check_passive_answer(message: Message, state: FSMContext):
         kb=create_stop_passive_keyboard()
     )
     
-    # Удаляем текущую карточку из сессии
+    # Очищаем текущую карточку из сессии
     session['current_note'] = None
