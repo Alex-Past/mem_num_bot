@@ -56,7 +56,9 @@ async def start_add_note(call: CallbackQuery, state: FSMContext):
     category = await get_category_by_id(category_id)
     category_name = category['category_name']
     await call.message.answer(
-        f'Добавьте заметку для категории "{category_name}"',
+        f'Добавьте карточку для категории "{category_name}"\n'
+        'Можно отправить:\n'
+        '• Фото\n• Видео\n• Документ\n• Аудио\n• Голосовое сообщение',
         reply_markup=stop_fsm()
     )
     await state.set_state(AddNoteStates.content)
@@ -104,7 +106,7 @@ async def handle_user_note_message(message: Message, state: FSMContext):
         await state.update_data(**content_info)                
         await message.answer(
             "📝 Теперь добавьте описание к карточке "
-            "(можете отправить пустое сообщение, если описание не нужно):",
+            "(будет использоваться в качестве ответа на экзамене):",
             reply_markup=stop_fsm()
         )
         await state.set_state(AddNoteStates.description)        
@@ -113,6 +115,15 @@ async def handle_user_note_message(message: Message, state: FSMContext):
             'Я не знаю как работать с таким медафайлом. Нужно что-то другое.'
         )
         await state.set_state(AddNoteStates.content)
+
+
+@add_note_router.message(AddNoteStates.check_state, F.text == "❌ Отменить")
+async def cancel_add_note(message: Message, state: FSMContext):
+    await message.answer(
+        'Создание карточки отменено!',
+        reply_markup=main_note_kb()
+    )
+    await state.clear()
 
 
 @add_note_router.message(AddNoteStates.check_state, F.text == "✅ Все верно")

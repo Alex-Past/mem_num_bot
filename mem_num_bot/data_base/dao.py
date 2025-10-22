@@ -235,7 +235,7 @@ async def update_desc_note(
     note_id: int,
     description: str
 ) -> Optional[Note]:
-    """Обновляем текст заметки."""
+    """Обновляем описание заметки."""
     try:
         note = await session.scalar(select(Note).filter_by(id=note_id))
         if not note:
@@ -248,6 +248,30 @@ async def update_desc_note(
         return note
     except SQLAlchemyError as e:
         logger.error(f"Ошибка при обновлении заметки: {e}")
+        await session.rollback()
+
+
+@connection
+async def update_file_note(
+    session,
+    note_id: int,
+    content_type: str,
+    file_id: str
+) -> Optional[Note]:
+    """Обновляем файл заметки."""
+    try:
+        note = await session.scalar(select(Note).filter_by(id=note_id))
+        if not note:
+            logger.error(f"Заметка с ID {note_id} не найдена.")
+            return None
+
+        note.content_type = content_type
+        note.file_id = file_id
+        await session.commit()
+        logger.info(f"Файл заметки с ID {note_id} успешно обновлен!")
+        return note
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка при обновлении файла заметки: {e}")
         await session.rollback()
 
 
