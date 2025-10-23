@@ -29,11 +29,40 @@ async def start_passive(message: Message, state: FSMContext):
     """Начало настройки пассивного обучения."""
     await state.clear()
     
-    categories = await get_all_categories(user_id=message.from_user.id)
+    user_id = message.from_user.id
+    
+    # Проверяем, есть ли активная сессия пассивного обучения
+    if user_id in active_passive_sessions and active_passive_sessions[user_id]['active']:
+        session = active_passive_sessions[user_id]
+        total_notes = len(session['all_notes'])
+        shown_notes = len(session['shown_notes'])
+        remaining_notes = len(session['available_notes'])
+        
+        interval_text = {
+            1800: "30 минут",
+            3600: "1 час", 
+            7200: "2 часа",
+            10800: "3 часа"
+        }.get(session['interval'], f"{session['interval']//3600} часа")
+        
+        await message.answer(
+            f"📖 Пассивное обучение уже запущено!\n\n"
+            f"• Всего карточек: {total_notes}\n"
+            f"• Показано: {shown_notes}\n"
+            f"• Осталось: {remaining_notes}\n"
+            f"• Интервал: {interval_text}\n\n"
+            f"Вы можете остановить обучение или продолжить.",
+            reply_markup=create_stop_passive_keyboard()
+        )
+        await state.set_state(PassiveStates.in_session)
+        return
+    
+    # Если активной сессии нет, показываем обычное меню
+    categories = await get_all_categories(user_id=user_id)
     if not categories:
         await message.answer(
             "❌ У вас нет категорий для пассивного обучения.",
-            reply_mup=main_note_kb()
+            reply_markup=main_note_kb()  # Исправлено: было reply_mup
         )
         return
     
@@ -130,6 +159,8 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
     # Останавливаем предыдущую сессию, если есть
     if user_id in active_passive_sessions:
         active_passive_sessions[user_id]['active'] = False
+        # Даем время на завершение предыдущей задачи
+        await asyncio.sleep(1)
     
     # Получаем заметки для пассивного обучения
     notes = await get_notes_by_categories(
@@ -145,13 +176,20 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
         await state.clear()
         return
     
-    # Создаем сессию
+    # Перемешиваем карточки для равномерного распределения
+    shuffled_notes = notes.copy()
+    random.shuffle(shuffled_notes)
+    
+    # Создаем сессию с улучшенной логикой
     active_passive_sessions[user_id] = {
         'active': True,
-        'notes': notes,
+        'all_notes': notes,  # Все карточки
+        'available_notes': shuffled_notes,  # Доступные для показа
+        'shown_notes': [],  # Показанные карточки
         'interval': interval_seconds,
         'last_message_id': None,
-        'current_note': None
+        'current_note': None,
+        'last_sent_time': None  # Время последней отправки
     }
     
     # Показываем информацию о запуске
@@ -185,6 +223,8 @@ def create_stop_passive_keyboard():
     """Клавиатура для остановки пассивного обучения."""
     builder = ReplyKeyboardBuilder()
     builder.button(text="⏹ Остановить пассивное обучение")
+    builder.button(text="📋 Главное меню")
+    builder.adjust(2)  # 2 кнопки в одной строке
     return builder.as_markup(resize_keyboard=True)
 
 
@@ -193,16 +233,17 @@ async def passive_worker(user_id: int):
     while user_id in active_passive_sessions and active_passive_sessions[user_id]['active']:
         try:
             session = active_passive_sessions[user_id]
-            interval = session.get('interval', 3600)  # По умолчанию 1 час
+            interval = session.get('interval', 3600)
             
             # Ждем выбранный интервал
             await asyncio.sleep(interval)
             
-            # Проверяем, активна ли еще сессия
-            if user_id in active_passive_sessions and active_passive_sessions[user_id]['active']:
-                # Проверяем, нет ли активной карточки (пользователь еще не ответил)
-                if not session.get('current_note'):
-                    await send_random_passive_card(user_id)
+            # Проверяем, активна ли еще сессия и нет ли активной карточки
+            if (user_id in active_passive_sessions and 
+                active_passive_sessions[user_id]['active'] and
+                not session.get('current_note')):
+                
+                await send_random_passive_card(user_id)
                     
         except Exception as e:
             print(f"Ошибка в passive_worker: {e}")
@@ -210,7 +251,7 @@ async def passive_worker(user_id: int):
 
 
 async def send_random_passive_card(user_id: int):
-    """Отправляет случайную карточку пользователю."""
+    """Отправляет случайную карточку пользователю с улучшенной логикой."""
     if user_id not in active_passive_sessions:
         return
     
@@ -218,13 +259,18 @@ async def send_random_passive_card(user_id: int):
     if not session['active']:
         return
     
-    notes = session['notes']
+    # Если доступные карточки закончились, перемешиваем заново
+    if not session['available_notes']:
+        # Перемешиваем все карточки заново
+        all_notes = session['all_notes'].copy()
+        random.shuffle(all_notes)
+        
+        session['available_notes'] = all_notes
+        session['shown_notes'] = []
     
-    if not notes:
-        return
-    
-    # Выбираем случайную карточку
-    random_note = random.choice(notes)
+    # Берем следующую карточку из доступных
+    random_note = session['available_notes'].pop(0)
+    session['shown_notes'].append(random_note)
     
     # Удаляем предыдущее сообщение, если есть
     if session.get('last_message_id'):
@@ -261,6 +307,16 @@ async def stop_passive_learning(message: Message, state: FSMContext):
         reply_markup=main_mem_kb()
     )
     await state.clear()
+
+
+@passive_router.message(PassiveStates.in_session, F.text == "📋 Главное меню")
+async def go_to_main_menu(message: Message, state: FSMContext):
+    """Переход в главное меню без остановки пассивного обучения."""
+    await message.answer(
+        "Вы в главном меню. Пассивное обучение продолжается в фоне.",
+        reply_markup=main_mem_kb()
+    )
+    # Состояние не очищаем, чтобы пассивное обучение продолжалось
 
 
 @passive_router.message(PassiveStates.in_session)

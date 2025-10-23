@@ -26,6 +26,9 @@ def create_passive_categories_keyboard(categories, selected_categories=None):
     keyboard.append([
         InlineKeyboardButton(text="🚀 Продолжить", callback_data="start_passive")
     ])
+    keyboard.append([
+        InlineKeyboardButton(text="Назад", callback_data="start_passive")
+    ])
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 

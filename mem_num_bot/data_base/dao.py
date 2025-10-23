@@ -461,16 +461,9 @@ async def get_random_note(session, user_id: int) -> Optional[Dict[str, Any]]:
     
     
 @connection
-async def get_notes_by_categories(
-    session, 
-    user_id: int, 
-    category_ids: list
-) -> List[Dict[str, Any]]:
+async def get_notes_by_categories(session, user_id: int, category_ids: list) -> List[Dict[str, Any]]:
     """Получаем заметки по выбранным категориям."""
     try:
-        # Используем selectinload для загрузки связанных данных
-        from sqlalchemy.orm import selectinload
-        
         stmt = (
             select(Note)
             .options(selectinload(Note.category))
@@ -484,19 +477,21 @@ async def get_notes_by_categories(
         notes = result.scalars().all()
         
         note_list = []
+        seen_ids = set()  # Для избежания дубликатов
+        
         for note in notes:
-            # Теперь category загружена через selectinload
-            category_name = note.category.name if note.category else "Без категории"
+            if note.id in seen_ids:
+                continue
+            seen_ids.add(note.id)
             
+            category_name = note.category.name if note.category else "Без категории"
             note_list.append({
                 'id': note.id,
                 'category_name': category_name,
                 'content_type': note.content_type,
                 'content_text': note.content_text,
                 'description': note.description,
-                'file_id': note.file_id,
-                'correct_answers': note.correct_answers,
-                'wrong_answers': note.wrong_answers
+                'file_id': note.file_id
             })
         
         return note_list
