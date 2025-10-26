@@ -3,11 +3,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import Message, CallbackQuery
 
-from data_base.dao import (delete_note_by_id,
+from data_base.dao import (delete_file_note,
+                           delete_note_by_id,
+                           get_note_by_id,
                            update_desc_note,
                            update_text_note,
                            update_file_note)
-from keyboards.note_kb import main_note_kb
+from keyboards.note_kb import main_note_kb, rule_note_kb
 from keyboards.other_kb import stop_fsm
 from utils_bot.utils import get_content_info  # Импортируем функцию для определения типа контента
 
@@ -127,3 +129,37 @@ async def dell_note_process(call: CallbackQuery, state: FSMContext):
     await delete_note_by_id(note_id=note_id)
     await call.answer(f'Карточка удалена!', show_alert=True)
     await call.message.delete()
+
+
+# Добавляем новый обработчик для удаления файла
+@upd_note_router.callback_query(F.data.startswith('delete_file_'))
+async def delete_file_note_process(call: CallbackQuery):
+    """Удаление файла из карточки."""
+    note_id = int(call.data.replace('delete_file_', ''))
+    
+    # Удаляем файл из базы данных
+    result = await delete_file_note(note_id=note_id)
+    
+    if result:
+        await call.answer("✅ Файл успешно удален из карточки!", show_alert=True)
+        
+        # Получаем обновленную карточку
+        updated_note = await get_note_by_id(note_id)
+        
+        if updated_note:
+            # Формируем текст карточки
+            note_text = (f"📝 Карточка обновлена\n\n"
+                        f"Категория: {updated_note.get('category_name', 'Без категории')}\n"
+                        f"Название: {updated_note.get('content_text', 'Без названия')}\n"
+                        f"Описание: {updated_note.get('description', 'Отсутствует')}\n"
+                        f"Файл: {'Отсутствует' if not updated_note.get('file_id') else 'Есть'}")
+            
+            # Обновляем сообщение с новой клавиатурой (без кнопки удаления файла)
+            await call.message.edit_text(
+                text=note_text,
+                reply_markup=rule_note_kb(note_id, has_file=False)
+            )
+        else:
+            await call.answer("❌ Ошибка при получении данных карточки", show_alert=True)
+    else:
+        await call.answer("❌ Не удалось удалить файл", show_alert=True)    

@@ -1,10 +1,4 @@
-from aiogram.types import (
-    InlineKeyboardMarkup, 
-    InlineKeyboardButton,
-    ReplyKeyboardMarkup,
-    KeyboardButton
-)
-
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 def create_categories_keyboard(categories, selected_categories=None):
     """Клавиатура для выбора категорий экзамена."""
@@ -32,24 +26,9 @@ def create_categories_keyboard(categories, selected_categories=None):
     keyboard.append([
         InlineKeyboardButton(text="🚀 Начать экзамен", callback_data="start_exam")
     ])
-    
-    return InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-
-def create_exam_main_keyboard(has_difficult_notes: bool = False):
-    """Основная клавиатура экзамена с кнопкой сложных карточек."""
-    keyboard = [
-        [InlineKeyboardButton(text="📚 Выбрать категории", callback_data="select_categories")],
-    ]
-    
-    if has_difficult_notes:
-        keyboard.append([
-            InlineKeyboardButton(text="🎯 Повторить сложные", callback_data="difficult_notes")
-        ])
-    
-    # keyboard.append([
-    #     InlineKeyboardButton(text="🔄 Случайные все", callback_data="random_all")
-    # ])
+    keyboard.append([
+        InlineKeyboardButton(text="⬅️ Меню", callback_data="exam_back")
+    ])
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
@@ -69,3 +48,17 @@ def create_stop_exam_keyboard():
         resize_keyboard=True,
         one_time_keyboard=False
     )
+
+
+def create_show_file_keyboard():
+    """Клавиатура для выбора показа файла."""
+    keyboard = [
+        [
+            InlineKeyboardButton(text="📝 Только текст", callback_data="show_file_false")
+        ],
+        [
+            InlineKeyboardButton(text="🖼️ Текст + файл", callback_data="show_file_true")
+        ]
+    ]
+    
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)

@@ -56,12 +56,21 @@ def find_note_kb():
     )
 
 
-def rule_note_kb(note_id: int):
-    return InlineKeyboardMarkup(
-        inline_keyboard=[[InlineKeyboardButton(text="Изменить название", callback_data=f'edit_note_text_{note_id}')],
-                         [InlineKeyboardButton(text="Изменить описание", callback_data=f'edit_desc_text_{note_id}')],
-                         [InlineKeyboardButton(text="Изменить файл", callback_data=f'edit_file_{note_id}')],
-                         [InlineKeyboardButton(text="Удалить", callback_data=f'dell_note_{note_id}')]])
+def rule_note_kb(note_id: int, has_file: bool = False):
+    """Клавиатура для управления карточкой."""
+    buttons = [
+        [InlineKeyboardButton(text="Изменить название", callback_data=f'edit_note_text_{note_id}')],
+        [InlineKeyboardButton(text="Изменить описание", callback_data=f'edit_desc_text_{note_id}')],
+        [InlineKeyboardButton(text="Изменить файл", callback_data=f'edit_file_{note_id}')],
+    ]
+    
+    # Добавляем кнопку удаления файла только если файл есть
+    if has_file:
+        buttons.append([InlineKeyboardButton(text="🗑️ Удалить файл", callback_data=f'delete_file_{note_id}')])
+    
+    buttons.append([InlineKeyboardButton(text="Удалить", callback_data=f'dell_note_{note_id}')])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def rule_cat_kb(cat_id: int):

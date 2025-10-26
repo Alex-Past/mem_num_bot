@@ -27,7 +27,7 @@ def create_passive_categories_keyboard(categories, selected_categories=None):
         InlineKeyboardButton(text="🚀 Продолжить", callback_data="start_passive")
     ])
     keyboard.append([
-        InlineKeyboardButton(text="Назад", callback_data="start_passive")
+        InlineKeyboardButton(text="⬅️ Меню", callback_data="passive_back")
     ])
     
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -36,6 +36,9 @@ def create_passive_categories_keyboard(categories, selected_categories=None):
 def create_interval_keyboard():
     """Клавиатура для выбора интервала."""
     keyboard = [
+        [
+            InlineKeyboardButton(text="⏱ 15 минут", callback_data="interval_15min")
+        ],
         [
             InlineKeyboardButton(text="⏱ 30 минут", callback_data="interval_30min")
         ],
@@ -47,6 +50,20 @@ def create_interval_keyboard():
         ],
         [
             InlineKeyboardButton(text="⏱ 3 часа", callback_data="interval_3hours")
+        ]
+    ]
+    
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def create_show_file_keyboard():
+    """Клавиатура для выбора показа файла."""
+    keyboard = [
+        [
+            InlineKeyboardButton(text="📝 Только текст", callback_data="show_file_false")
+        ],
+        [
+            InlineKeyboardButton(text="🖼️ Текст + файл", callback_data="show_file_true")
         ]
     ]
     

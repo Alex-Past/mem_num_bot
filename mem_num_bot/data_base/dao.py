@@ -276,6 +276,28 @@ async def update_file_note(
 
 
 @connection
+async def delete_file_note(
+    session,
+    note_id: int
+) -> Optional[Note]:
+    """Удаляем файл из заметки."""
+    try:
+        note = await session.scalar(select(Note).filter_by(id=note_id))
+        if not note:
+            logger.error(f"Заметка с ID {note_id} не найдена.")
+            return None
+
+        note.file_id = None
+        note.content_type = "text"
+        await session.commit()
+        logger.info(f"Файл заметки с ID {note_id} успешно удален!")
+        return note
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка при удалении файла заметки: {e}")
+        await session.rollback()
+
+
+@connection
 async def get_note_by_id(session, note_id: int) -> Optional[Dict[str, Any]]:
     """Получаем заметку по ID."""
     try:

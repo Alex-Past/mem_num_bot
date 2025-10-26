@@ -5,7 +5,6 @@ from aiogram.types import BotCommand, BotCommandScopeDefault
 from create_bot import bot, dp, admins
 from create_bot import notification_manager
 from data_base.base import create_tables
-from handlers.memory.random_card_router import random_card_router
 from handlers.memory.exam_router import exam_router
 from handlers.memory.passive_router import passive_router
 from handlers.note.add_cat_router import add_cat_router
@@ -58,8 +57,7 @@ async def main():
     dp.include_router(find_note_router)
     dp.include_router(view_cat_router)
     dp.include_router(upd_cat_router)
-    dp.include_router(upd_note_router)
-    dp.include_router(random_card_router)
+    dp.include_router(upd_note_router)   
     dp.include_router(exam_router)
     dp.include_router(passive_router)
     dp.include_router(notifications_router)

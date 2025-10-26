@@ -7,7 +7,7 @@ import asyncio
 import random
 
 from data_base.dao import get_all_categories, get_notes_by_categories
-from keyboards.passive_kb import create_passive_categories_keyboard, create_interval_keyboard
+from keyboards.passive_kb import create_passive_categories_keyboard, create_interval_keyboard, create_show_file_keyboard
 from create_bot import bot
 from keyboards.note_kb import main_note_kb
 from keyboards.mem_kb import main_mem_kb
@@ -21,6 +21,7 @@ active_passive_sessions = {}
 class PassiveStates(StatesGroup):
     choosing_categories = State()
     choosing_interval = State()
+    choosing_show_file = State()
     in_session = State()
 
 
@@ -34,26 +35,7 @@ async def start_passive(message: Message, state: FSMContext):
     # Проверяем, есть ли активная сессия пассивного обучения
     if user_id in active_passive_sessions and active_passive_sessions[user_id]['active']:
         session = active_passive_sessions[user_id]
-        total_notes = len(session['all_notes'])
-        shown_notes = len(session['shown_notes'])
-        remaining_notes = len(session['available_notes'])
-        
-        interval_text = {
-            1800: "30 минут",
-            3600: "1 час", 
-            7200: "2 часа",
-            10800: "3 часа"
-        }.get(session['interval'], f"{session['interval']//3600} часа")
-        
-        await message.answer(
-            f"📖 Пассивное обучение уже запущено!\n\n"
-            f"• Всего карточек: {total_notes}\n"
-            f"• Показано: {shown_notes}\n"
-            f"• Осталось: {remaining_notes}\n"
-            f"• Интервал: {interval_text}\n\n"
-            f"Вы можете остановить обучение или продолжить.",
-            reply_markup=create_stop_passive_keyboard()
-        )
+        await show_passive_info_message(message, session)
         await state.set_state(PassiveStates.in_session)
         return
     
@@ -62,7 +44,7 @@ async def start_passive(message: Message, state: FSMContext):
     if not categories:
         await message.answer(
             "❌ У вас нет категорий для пассивного обучения.",
-            reply_markup=main_note_kb()  # Исправлено: было reply_mup
+            reply_markup=main_note_kb()
         )
         return
     
@@ -87,6 +69,10 @@ async def process_passive_category_selection(call: CallbackQuery, state: FSMCont
         category_ids = [cat['id'] for cat in categories]
         await state.update_data(selected_categories=category_ids)
         await show_interval_selection(call, state)
+        return
+    
+    if call.data == 'passive_back':
+        await passive_back(call, state)
         return
     
     category_id = int(call.data.replace('passive_category_', ''))
@@ -119,6 +105,17 @@ async def start_passive_with_selected(call: CallbackQuery, state: FSMContext):
     await show_interval_selection(call, state)
 
 
+@passive_router.callback_query(PassiveStates.choosing_categories, F.data == 'passive_back')
+async def passive_back(call: CallbackQuery, state: FSMContext):
+    """Возврат из выбора категорий пассивного обучения."""
+    await call.message.answer(
+        "Главное меню:",
+        reply_markup=main_mem_kb()
+    )
+    await call.message.delete()
+    await state.clear()
+
+
 async def show_interval_selection(call: CallbackQuery, state: FSMContext):
     """Показ выбора интервала."""
     await call.message.answer(
@@ -132,6 +129,7 @@ async def show_interval_selection(call: CallbackQuery, state: FSMContext):
 async def process_interval_selection(call: CallbackQuery, state: FSMContext):
     """Обработка выбора интервала."""
     interval_map = {
+        'interval_15min': 900,   # 15 минут
         'interval_30min': 1800,  # 30 минут
         'interval_1hour': 3600,  # 1 час
         'interval_2hours': 7200,  # 2 часа
@@ -145,14 +143,32 @@ async def process_interval_selection(call: CallbackQuery, state: FSMContext):
         await call.answer("❌ Неверный интервал", show_alert=True)
         return
     
-    # Получаем выбранные категории
+    # Сохраняем выбранный интервал
+    await state.update_data(interval=interval_seconds)
+    
+    # Переходим к выбору показа файла
+    await call.message.answer(
+        "📸 Выберите, как показывать карточки:",
+        reply_markup=create_show_file_keyboard()
+    )
+    await state.set_state(PassiveStates.choosing_show_file)
+
+
+@passive_router.callback_query(PassiveStates.choosing_show_file, F.data.startswith('show_file_'))
+async def process_show_file_selection(call: CallbackQuery, state: FSMContext):
+    """Обработка выбора показа файла."""
+    show_file = call.data == 'show_file_true'
+    
+    # Получаем выбранные категории и интервал
     data = await state.get_data()
     selected_categories = data.get('selected_categories', [])
+    interval_seconds = data.get('interval', 3600)
     
-    await start_passive_session(call, state, selected_categories, interval_seconds)
+    # Запускаем пассивную сессию
+    await start_passive_session(call, state, selected_categories, interval_seconds, show_file)
 
 
-async def start_passive_session(call: CallbackQuery, state: FSMContext, category_ids: list, interval_seconds: int):
+async def start_passive_session(call: CallbackQuery, state: FSMContext, category_ids: list, interval_seconds: int, show_file: bool):
     """Запуск пассивной сессии."""
     user_id = call.from_user.id
     
@@ -187,13 +203,15 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
         'available_notes': shuffled_notes,  # Доступные для показа
         'shown_notes': [],  # Показанные карточки
         'interval': interval_seconds,
+        'show_file': show_file,
         'last_message_id': None,
         'current_note': None,
-        'last_sent_time': None  # Время последней отправки
+        'category_ids': category_ids
     }
     
     # Показываем информацию о запуске
     interval_text = {
+        900: "15 минут",
         1800: "30 минут",
         3600: "1 час", 
         7200: "2 часа",
@@ -204,7 +222,8 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
         f"📖 Пассивное обучение запущено!\n"
         f"• Категории: {len(category_ids)}\n"
         f"• Карточек: {len(notes)}\n"
-        f"• Интервал: {interval_text}\n\n"
+        f"• Интервал: {interval_text}\n"
+        f"• Показ файла: {'Да' if show_file else 'Нет'}\n\n"
         f"Я буду присылать случайные карточки с выбранным интервалом.\n"
         f"Вы можете остановить в любой момент.",
         reply_markup=create_stop_passive_keyboard()
@@ -220,10 +239,10 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
 
 
 def create_stop_passive_keyboard():
-    """Клавиатура для остановки пассивного обучения."""
+    """Клавиатура для пассивного обучения."""
     builder = ReplyKeyboardBuilder()
     builder.button(text="⏹ Остановить пассивное обучение")
-    builder.button(text="📋 Главное меню")
+    builder.button(text="ℹ️ Инфо")
     builder.adjust(2)  # 2 кнопки в одной строке
     return builder.as_markup(resize_keyboard=True)
 
@@ -235,6 +254,9 @@ async def passive_worker(user_id: int):
             session = active_passive_sessions[user_id]
             interval = session.get('interval', 3600)
             
+            # Логирование для отладки
+            print(f"🕒 [{user_id}] Worker: жду {interval} сек, active={session['active']}, current_note={session.get('current_note') is not None}")
+            
             # Ждем выбранный интервал
             await asyncio.sleep(interval)
             
@@ -243,6 +265,7 @@ async def passive_worker(user_id: int):
                 active_passive_sessions[user_id]['active'] and
                 not session.get('current_note')):
                 
+                print(f"🚀 [{user_id}] Worker: отправляю карточку")
                 await send_random_passive_card(user_id)
                     
         except Exception as e:
@@ -279,19 +302,44 @@ async def send_random_passive_card(user_id: int):
         except:
             pass
     
-    # Отправляем название карточки
-    message = await bot.send_message(
-        user_id,
-        f"📖 Пассивное обучение\n\n"
-        f"{random_note.get('content_text', 'Без названия')}\n\n"
-        f"Напиши описание этой карточки:",
-        reply_markup=create_stop_passive_keyboard()
-    )
+    show_file = session.get('show_file', False)
+    
+    # Формируем текст для карточки
+    card_text = f"📖 Пассивное обучение\n\n{random_note.get('content_text', 'Без названия')}\n\nНапиши описание этой карточки:"
+    
+    if show_file and random_note.get('file_id'):
+        try:
+            # Показываем карточку с файлом
+            message_id = await send_message_user(
+                bot=bot,
+                content_type=random_note.get('content_type'),
+                content_text=card_text,
+                user_id=user_id,
+                file_id=random_note.get('file_id'),
+                kb=create_stop_passive_keyboard()
+            )
+            session['last_message_id'] = message_id
+        except Exception as e:
+            print(f"Ошибка при отправке файла: {e}")
+            # Если ошибка, показываем только текст
+            message = await bot.send_message(
+                user_id,
+                card_text,
+                reply_markup=create_stop_passive_keyboard()
+            )
+            session['last_message_id'] = message.message_id
+    else:
+        # Показываем только текст
+        message = await bot.send_message(
+            user_id,
+            card_text,
+            reply_markup=create_stop_passive_keyboard()
+        )
+        session['last_message_id'] = message.message_id
     
     # Сохраняем данные карточки для проверки ответа
     session['current_note'] = random_note
-    session['last_message_id'] = message.message_id
-
+    
 
 @passive_router.message(PassiveStates.in_session, F.text == "⏹ Остановить пассивное обучение")
 async def stop_passive_learning(message: Message, state: FSMContext):
@@ -309,14 +357,42 @@ async def stop_passive_learning(message: Message, state: FSMContext):
     await state.clear()
 
 
-@passive_router.message(PassiveStates.in_session, F.text == "📋 Главное меню")
-async def go_to_main_menu(message: Message, state: FSMContext):
-    """Переход в главное меню без остановки пассивного обучения."""
+@passive_router.message(PassiveStates.in_session, F.text == "ℹ️ Инфо")
+async def show_passive_info(message: Message, state: FSMContext):
+    """Показ информации о пассивном обучении."""
+    user_id = message.from_user.id
+    
+    if user_id not in active_passive_sessions:
+        await message.answer("❌ Пассивное обучение не запущено.")
+        return
+    
+    session = active_passive_sessions[user_id]
+    await show_passive_info_message(message, session)
+
+
+async def show_passive_info_message(message: Message, session):
+    """Показ информации о пассивном обучении."""
+    total_notes = len(session['all_notes'])
+    shown_notes = len(session['shown_notes'])
+    remaining_notes = len(session['available_notes'])
+    
+    interval_text = {
+        900: "15 минут",
+        1800: "30 минут",
+        3600: "1 час", 
+        7200: "2 часа",
+        10800: "3 часа"
+    }.get(session['interval'], f"{session['interval']//3600} часа")
+    
     await message.answer(
-        "Вы в главном меню. Пассивное обучение продолжается в фоне.",
-        reply_markup=main_mem_kb()
+        f"📊 Статистика пассивного обучения:\n\n"
+        f"• Всего карточек: {total_notes}\n"
+        f"• Показано: {shown_notes}\n"
+        f"• Осталось: {remaining_notes}\n"
+        f"• Интервал: {interval_text}\n"
+        f"• Показ файла: {'Да' if session.get('show_file') else 'Нет'}",
+        reply_markup=create_stop_passive_keyboard()
     )
-    # Состояние не очищаем, чтобы пассивное обучение продолжалось
 
 
 @passive_router.message(PassiveStates.in_session)
@@ -330,6 +406,8 @@ async def check_passive_answer(message: Message, state: FSMContext):
     session = active_passive_sessions[user_id]
     if not session.get('current_note'):
         return
+    
+    print(f"📝 [{user_id}] Пользователь ответил на карточку")
     
     current_note = session['current_note']
     user_answer = message.text.strip().lower()

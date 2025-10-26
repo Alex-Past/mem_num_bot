@@ -36,56 +36,99 @@ def get_content_info(message: Message):
     }
 
 
-async def send_message_user(
-    bot, user_id,
-    content_type,
-    content_text=None,
-    file_id=None,
-    kb=None
-):
-    """Отправляем сообщение, в зависимости от контента."""
-    match content_type:
-        case 'text': await bot.send_message(
-            chat_id=user_id,
-            text=content_text,
-            reply_markup=kb
-        )
-        case 'photo': await bot.send_photo(
-            chat_id=user_id,
-            photo=file_id,
-            caption=content_text,
-            reply_markup=kb
-        )
-        case 'document': await bot.send_document(
-            chat_id=user_id,
-            document=file_id,
-            caption=content_text,
-            reply_markup=kb
-        )
-        case 'video': await bot.send_video(
-            chat_id=user_id,
-            video=file_id,
-            caption=content_text,
-            reply_markup=kb
-        )
-        case 'audio': await bot.send_audio(
-            chat_id=user_id,
-            audio=file_id,
-            caption=content_text,
-            reply_markup=kb
-        )
-        case 'voice': await bot.send_voice(
-            chat_id=user_id,
-            voice=file_id,
-            caption=content_text,
-            reply_markup=kb
-        )
+async def send_message_user(bot, content_type, content_text, user_id, file_id=None, kb=None):
+    """Отправляет сообщение пользователю с возможными медиафайлами."""
+    try:
+        # Проверяем, что user_id не является ID бота
+        if str(user_id).startswith('0') or len(str(user_id)) < 8:
+            print(f"❌ Некорректный user_id: {user_id}")
+            return None
+            
+        # Обрезаем текст если он слишком длинный для подписи
+        if content_type != "text" and file_id and len(content_text) > 1024:
+            content_text = content_text[:1020] + "..."
+
+        if content_type == "photo" and file_id:
+            message = await bot.send_photo(
+                chat_id=user_id,
+                photo=file_id,
+                caption=content_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            return message.message_id
+        elif content_type == "video" and file_id:
+            message = await bot.send_video(
+                chat_id=user_id,
+                video=file_id,
+                caption=content_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            return message.message_id
+        elif content_type == "audio" and file_id:
+            message = await bot.send_audio(
+                chat_id=user_id,
+                audio=file_id,
+                caption=content_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            return message.message_id
+        elif content_type == "document" and file_id:
+            message = await bot.send_document(
+                chat_id=user_id,
+                document=file_id,
+                caption=content_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            return message.message_id
+        elif content_type == "voice" and file_id:
+            message = await bot.send_voice(
+                chat_id=user_id,
+                voice=file_id,
+                caption=content_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            return message.message_id
+        else:
+            # Если тип контента не поддерживается или файл отсутствует, отправляем текст
+            message = await bot.send_message(
+                chat_id=user_id,
+                text=content_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            return message.message_id
+    except Exception as e:
+        print(f"❌ Ошибка в send_message_user: {e}")
+        print(f"   user_id: {user_id}, content_type: {content_type}, file_id: {file_id}")
+        
+        # В случае ошибки отправляем просто текстовое сообщение
+        try:
+            message = await bot.send_message(
+                chat_id=user_id,
+                text=content_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            return message.message_id
+        except Exception as e2:
+            print(f"❌ Критическая ошибка при отправке текста: {e2}")
+            return None
 
 
 async def send_many_notes(all_notes, bot, user_id):
     """Функция для отправки списка заметок."""
     for note in all_notes:        
-        kb = rule_note_kb(note['id'])         
+        # Определяем, есть ли файл у заметки
+        has_file = bool(note.get('file_id') and note.get('content_type') != 'text')
+        
+        # Передаем параметр has_file в клавиатуру
+        kb = rule_note_kb(note['id'], has_file=has_file)
+         
         try:
             category = await get_category_by_id(note['category_id'])
             cat_name = category['category_name']
