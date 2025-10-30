@@ -153,15 +153,25 @@ async def show_show_file_selection(call: CallbackQuery, state: FSMContext):
 
 @exam_router.callback_query(ExamStates.choosing_show_file, F.data.startswith('show_file_'))
 async def process_show_file_selection(call: CallbackQuery, state: FSMContext):
-    """Обработка выбора показа файла."""
+    """Обработка выбора показа файла для всех режимов."""
     show_file = call.data == 'show_file_true'
     
-    # Получаем выбранные категории
     data = await state.get_data()
-    selected_categories = data.get('selected_categories', [])
     
-    # Запускаем экзамен
-    await start_exam_session(call, state, selected_categories, show_file)
+    # Проверяем режим экзамена
+    exam_mode = data.get('exam_mode', 'normal')
+    
+    if exam_mode == 'difficult':
+        # Режим сложных карточек
+        difficult_notes = data.get('difficult_notes')
+        if difficult_notes:
+            await start_difficult_exam_session(call, state, difficult_notes, show_file)
+        else:
+            await call.answer("❌ Ошибка: сложные карточки не найдены", show_alert=True)
+    else:
+        # Обычный режим
+        selected_categories = data.get('selected_categories', [])
+        await start_exam_session(call, state, selected_categories, show_file)
 
 
 @exam_router.callback_query(F.data == 'difficult_notes')
@@ -172,38 +182,39 @@ async def start_difficult_exam(call: CallbackQuery, state: FSMContext):
     if not difficult_notes:
         await call.answer("❌ У вас пока нет сложных карточек!", show_alert=True)
         return
-    
-    # Переходим к выбору показа файла для сложных карточек
-    await call.message.answer(
-        "📸 Выберите, как показывать карточки:",
-        reply_markup=create_show_file_keyboard()
-    )
-    
+        
     await state.update_data(
         difficult_notes=difficult_notes,
         exam_mode="difficult"
     )
     await state.set_state(ExamStates.choosing_show_file)
-
-
-@exam_router.callback_query(ExamStates.choosing_show_file, F.data.startswith('show_file_'))
-async def process_difficult_show_file(call: CallbackQuery, state: FSMContext):
-    """Обработка выбора показа файла для сложных карточек."""
-    show_file = call.data == 'show_file_true'
     
-    data = await state.get_data()
-    difficult_notes = data.get('difficult_notes')
+    await call.message.answer(
+        "📸 Выберите, как показывать карточки:",
+        reply_markup=create_show_file_keyboard()
+    )
+
+
+# @exam_router.callback_query(ExamStates.choosing_show_file, F.data.startswith('show_file_'))
+# async def process_difficult_show_file(call: CallbackQuery, state: FSMContext):
+#     """Обработка выбора показа файла для сложных карточек."""
+#     show_file = call.data == 'show_file_true'
     
-    if difficult_notes:
-        # Запускаем экзамен по сложным карточкам
-        await start_difficult_exam_session(call, state, difficult_notes, show_file)
-    else:
-        # Обычный экзамен
-        selected_categories = data.get('selected_categories', [])
-        await start_exam_session(call, state, selected_categories, show_file)
+#     data = await state.get_data()
+#     difficult_notes = data.get('difficult_notes')
+    
+#     if difficult_notes:
+#         # Запускаем экзамен по сложным карточкам
+#         await start_difficult_exam_session(call, state, difficult_notes, show_file)
+#     else:
+#         # Обычный экзамен
+#         selected_categories = data.get('selected_categories', [])
+#         await start_exam_session(call, state, selected_categories, show_file)
 
 
-async def start_exam_session(call: CallbackQuery, state: FSMContext, category_ids: list, show_file: bool):
+async def start_exam_session(call: CallbackQuery,
+                            state: FSMContext,
+                            category_ids: list, show_file: bool):
     """Запуск сессии экзамена."""
     # Получаем заметки для экзамена
     notes = await get_notes_by_categories(
@@ -214,11 +225,6 @@ async def start_exam_session(call: CallbackQuery, state: FSMContext, category_id
     # Фильтруем заметки с описанием
     exam_notes = [note for note in notes if note.get('description')]
     
-    # Логируем информацию о карточках
-    print(f"🔍 Запуск экзамена: {len(exam_notes)} карточек, show_file={show_file}")
-    for i, note in enumerate(exam_notes):
-        print(f"   Карточка {i+1}: content_type={note.get('content_type')}, file_id={note.get('file_id')}")
-
 
     if not exam_notes:
         await call.message.answer(
@@ -255,7 +261,10 @@ async def start_exam_session(call: CallbackQuery, state: FSMContext, category_id
     await state.set_state(ExamStates.in_exam)
 
 
-async def start_difficult_exam_session(call: CallbackQuery, state: FSMContext, difficult_notes: list, show_file: bool):
+async def start_difficult_exam_session(call: CallbackQuery,
+                                       state: FSMContext,
+                                       difficult_notes: list,
+                                       show_file: bool):
     """Запуск экзамена по сложным карточкам."""
     # Перемешиваем сложные карточки
     random.shuffle(difficult_notes)
@@ -296,10 +305,11 @@ async def show_next_exam_question(user_id: int, state: FSMContext):
     current_note = exam_notes[current_index]
     
     # Формируем текст для карточки
-    card_text = f"📚 Карточка {current_index + 1}/{len(exam_notes)}\n\n{current_note.get('content_text', 'Без названия')}\n\nНапиши описание этой карточки:"
+    card_text = (f"📚 Карточка {current_index + 1}/{len(exam_notes)}\n\n"
+                 f"{current_note.get('content_text', 'Без названия')}"
+                 "\n\nНапиши описание этой карточки:")
     
-    print(f"🔍 Отправка карточки {current_index + 1} пользователю {user_id}: show_file={show_file}, file_id={current_note.get('file_id')}, content_type={current_note.get('content_type')}")
-    
+   
     if show_file and current_note.get('file_id') and current_note.get('content_type') != "text":
         try:
             # Показываем карточку с файлом
@@ -401,12 +411,25 @@ async def finish_exam(user_id: int, state: FSMContext):
     exam_mode = data.get('exam_mode', 'normal')
     
     # Сохраняем данные для повторения
-    await state.update_data(
-        repeat_categories=selected_categories,
-        repeat_show_file=show_file,
-        repeat_exam_mode=exam_mode
-    )
-    
+    # await state.update_data(
+    #     repeat_categories=selected_categories,
+    #     repeat_show_file=show_file,
+    #     repeat_exam_mode=exam_mode
+    # )
+    # Для сложных карточек сохраняем исходный список, а не получаем заново
+    if exam_mode == 'difficult':
+        original_difficult_notes = data.get('exam_notes', [])  # Сохраняем исходный список
+        await state.update_data(
+            repeat_difficult_notes=original_difficult_notes,  # Сохраняем для повтора
+            repeat_exam_mode=exam_mode,
+            repeat_show_file=show_file
+        )
+    else:
+        await state.update_data(
+            repeat_categories=selected_categories,
+            repeat_exam_mode=exam_mode,
+            repeat_show_file=show_file
+        )
     # Статистика
     success_rate = (correct_answers / total_notes * 100) if total_notes > 0 else 0
     
@@ -466,14 +489,18 @@ async def repeat_exam_from_keyboard(message: Message, state: FSMContext):
     exam_mode = data.get('repeat_exam_mode', 'normal')
     
     if not selected_categories and exam_mode != 'difficult':
-        await message.answer("❌ Нет данных для повторения экзамена", reply_markup=main_note_kb())
+        await message.answer("❌ Нет данных для повторения экзамена",
+                             reply_markup=main_note_kb())
         await state.clear()
         return
     
     await message.answer("🔄 Запускаю экзамен с теми же настройками...")
     
     if exam_mode == 'difficult':
-        difficult_notes = await get_difficult_notes(user_id=message.from_user.id)
+        # difficult_notes = await get_difficult_notes(user_id=message.from_user.id)
+        difficult_notes = data.get('repeat_difficult_notes', [])
+        if not difficult_notes:
+            difficult_notes = await get_difficult_notes(user_id=message.from_user.id)
         if difficult_notes:
             # Обновляем данные для сложного экзамена
             await state.update_data(
@@ -488,7 +515,8 @@ async def repeat_exam_from_keyboard(message: Message, state: FSMContext):
             await show_next_exam_question(message.from_user.id, state)
             await state.set_state(ExamStates.in_exam)
         else:
-            await message.answer("❌ Сложные карточки закончились!", reply_markup=main_note_kb())
+            await message.answer("❌ Сложные карточки закончились!",
+                                 reply_markup=main_note_kb())
             await state.clear()
     else:
         # Запускаем обычный экзамен
@@ -499,7 +527,8 @@ async def repeat_exam_from_keyboard(message: Message, state: FSMContext):
         exam_notes = [note for note in notes if note.get('description')]
         
         if not exam_notes:
-            await message.answer("❌ В выбранных категориях нет заметок с описанием!", reply_markup=main_note_kb())
+            await message.answer("❌ В выбранных категориях нет заметок с описанием!",
+                                 reply_markup=main_note_kb())
             await state.clear()
             return
             

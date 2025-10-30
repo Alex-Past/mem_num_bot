@@ -12,12 +12,6 @@ def create_notifications_keyboard(is_active: bool):
                 callback_data="toggle_difficult_notes_notifications"
             )
         ],
-        # [
-        #     InlineKeyboardButton(
-        #         text="📊 Статистика уведомлений", 
-        #         callback_data="notifications_stats"
-        #     )
-        # ],
         [
             InlineKeyboardButton(
                 text="⬅️ Назад", 
