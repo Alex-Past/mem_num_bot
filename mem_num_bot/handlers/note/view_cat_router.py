@@ -10,7 +10,7 @@ from utils_bot.utils import send_many_categories
 view_cat_router = Router()
 
 
-@view_cat_router.message(F.text == "📋 Список категорий")
+@view_cat_router.message(F.text == "📖 Изменить категории")
 async def all_views_category(message: Message):
     all_category = await get_all_categories(user_id=message.from_user.id)
     if all_category:

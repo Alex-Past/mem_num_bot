@@ -5,8 +5,6 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from decouple import config
 
-from utils_bot.notifications import setup_notifications
-
 
 admins = [int(admin_id) for admin_id in config('ADMINS').split(',')]
 logging.basicConfig(
@@ -21,4 +19,3 @@ bot = Bot(
 )
 dp = Dispatcher(storage=MemoryStorage())
 
-notification_manager = setup_notifications(bot)

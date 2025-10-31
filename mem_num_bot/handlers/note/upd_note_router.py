@@ -43,7 +43,7 @@ async def confirm_edit_note_text(message: Message, state: FSMContext):
     await update_text_note(note_id=note_id, content_text=content_text)
     await state.clear()
     await message.answer(
-        f'Название карточки с ID {note_id} успешно изменено на "{content_text}"!',
+        f'Название карточки успешно изменено на "{content_text}"!',
         reply_markup=main_note_kb()
     )
 
@@ -69,7 +69,7 @@ async def confirm_edit_desc_text(message: Message, state: FSMContext):
     await update_desc_note(note_id=note_id, description=description)
     await state.clear()
     await message.answer(
-        f'Описание карточки с ID {note_id} успешно изменено на "{description}"!',
+        f'Описание карточки успешно изменено на "{description}"!',
         reply_markup=main_note_kb()
     )
 
@@ -110,7 +110,7 @@ async def confirm_edit_note_file(message: Message, state: FSMContext):
         
         await state.clear()
         await message.answer(
-            f'Файл карточки с ID {note_id} успешно изменен!',
+            f'Файл карточки успешно изменен!',
             reply_markup=main_note_kb()
         )
     else:

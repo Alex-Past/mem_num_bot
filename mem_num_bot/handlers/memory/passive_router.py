@@ -25,7 +25,7 @@ class PassiveStates(StatesGroup):
     in_session = State()
 
 
-@passive_router.message(F.text == "📖 Пассивно")
+@passive_router.message(F.text == "💤 Пассивно")
 async def start_passive(message: Message, state: FSMContext):
     """Начало настройки пассивного обучения."""
     await state.clear()
@@ -351,7 +351,8 @@ async def stop_passive_learning(message: Message, state: FSMContext):
         del active_passive_sessions[user_id]
     
     await message.answer(
-        "⏹ Пассивное обучение остановлено!",
+        "⏹ Пассивное обучение остановлено!\n Проверьте раздел 'Экзамен' "
+        "- возможно там появились сложные карточки!",
         reply_markup=main_mem_kb()
     )
     await state.clear()

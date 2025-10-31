@@ -17,7 +17,7 @@ class AddNoteStates(StatesGroup):
     check_state_cat = State()
 
 
-@add_cat_router.message(F.text == "📝 Добавить категорию")
+@add_cat_router.message(F.text == "📗 Добавить категорию")
 async def start_add_category(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(

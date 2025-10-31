@@ -21,7 +21,7 @@ def create_categories_keyboard(categories, selected_categories=None):
     
     # Кнопки управления
     keyboard.append([
-        InlineKeyboardButton(text="🎯 Все категории", callback_data="exam_category_all")
+        InlineKeyboardButton(text="Все категории", callback_data="exam_category_all")
     ])
     keyboard.append([
         InlineKeyboardButton(text="🚀 Начать экзамен", callback_data="start_exam")
@@ -57,7 +57,7 @@ def create_show_file_keyboard():
             InlineKeyboardButton(text="📝 Только текст", callback_data="show_file_false")
         ],
         [
-            InlineKeyboardButton(text="🖼️ Текст + файл", callback_data="show_file_true")
+            InlineKeyboardButton(text="🎆 Текст + файл", callback_data="show_file_true")
         ]
     ]
     

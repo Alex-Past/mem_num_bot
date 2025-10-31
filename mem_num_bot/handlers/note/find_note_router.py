@@ -17,7 +17,7 @@ class FindNoteStates(StatesGroup):
     category = State()
 
 
-@find_note_router.message(F.text == "📋 Просмотр карточек")
+@find_note_router.message(F.text == "📒 Просмотр карточек")
 async def start_views_noti(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(

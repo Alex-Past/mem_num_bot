@@ -13,8 +13,7 @@ from data_base.dao import (
     get_difficult_notes
 )
 from keyboards.exam_kb import (
-    create_categories_keyboard, 
-    create_exam_control_keyboard,
+    create_categories_keyboard,    
     create_stop_exam_keyboard,
     create_show_file_keyboard
 )
@@ -33,7 +32,7 @@ class ExamStates(StatesGroup):
     finished = State()
 
 
-@exam_router.message(F.text == '📚 Экзамен')
+@exam_router.message(F.text == '🧠 Экзамен')
 async def start_exam(message: Message, state: FSMContext):
     """Начало экзамена - выбор режима."""
     await state.clear()
@@ -42,9 +41,9 @@ async def start_exam(message: Message, state: FSMContext):
     difficult_notes = await get_difficult_notes(user_id=message.from_user.id)
     has_difficult = len(difficult_notes) > 0
     
-    text = "📚 Выберите режим экзамена:"
+    text = "🧠 Выберите режим экзамена:"
     if has_difficult:
-        text += f"\n\n🎯 У вас {len(difficult_notes)} сложных карточек для повторения"
+        text += f"\n\n🎯 Cложных карточек для повторения: {len(difficult_notes)}"
     
     keyboard = [
         [InlineKeyboardButton(text="📚 Выбрать категории", callback_data="select_categories")],
@@ -54,11 +53,7 @@ async def start_exam(message: Message, state: FSMContext):
         keyboard.append([
             InlineKeyboardButton(text="🎯 Повторить сложные", callback_data="difficult_notes")
         ])
-    
-    # keyboard.append([
-    #     InlineKeyboardButton(text="⬅️ Назад", callback_data="exam_back")
-    # ])
-    
+
     await message.answer(
         text,
         reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
@@ -135,7 +130,7 @@ async def start_exam_with_selected(call: CallbackQuery, state: FSMContext):
 async def exam_back(call: CallbackQuery, state: FSMContext):
     """Возврат из выбора категорий экзамена."""
     await call.message.answer(
-        "Главное меню:",
+        "🧩 Главное меню:",
         reply_markup=main_mem_kb()
     )
     await call.message.delete()
@@ -195,23 +190,6 @@ async def start_difficult_exam(call: CallbackQuery, state: FSMContext):
     )
 
 
-# @exam_router.callback_query(ExamStates.choosing_show_file, F.data.startswith('show_file_'))
-# async def process_difficult_show_file(call: CallbackQuery, state: FSMContext):
-#     """Обработка выбора показа файла для сложных карточек."""
-#     show_file = call.data == 'show_file_true'
-    
-#     data = await state.get_data()
-#     difficult_notes = data.get('difficult_notes')
-    
-#     if difficult_notes:
-#         # Запускаем экзамен по сложным карточкам
-#         await start_difficult_exam_session(call, state, difficult_notes, show_file)
-#     else:
-#         # Обычный экзамен
-#         selected_categories = data.get('selected_categories', [])
-#         await start_exam_session(call, state, selected_categories, show_file)
-
-
 async def start_exam_session(call: CallbackQuery,
                             state: FSMContext,
                             category_ids: list, show_file: bool):
@@ -249,7 +227,7 @@ async def start_exam_session(call: CallbackQuery,
     )
     
     await call.message.answer(
-        f"📚 Экзамен начался!\n"
+        f"🧠 Экзамен начался!\n"
         f"Всего карточек: {len(exam_notes)}\n"
         f"Показ файла: {'Да' if show_file else 'Нет'}\n\n"
         f"Я буду показывать карточки, а ты напиши описание к ним.\n"
@@ -305,7 +283,7 @@ async def show_next_exam_question(user_id: int, state: FSMContext):
     current_note = exam_notes[current_index]
     
     # Формируем текст для карточки
-    card_text = (f"📚 Карточка {current_index + 1}/{len(exam_notes)}\n\n"
+    card_text = (f"📝 Карточка {current_index + 1}/{len(exam_notes)}\n\n"
                  f"{current_note.get('content_text', 'Без названия')}"
                  "\n\nНапиши описание этой карточки:")
     
@@ -410,13 +388,7 @@ async def finish_exam(user_id: int, state: FSMContext):
     show_file = data.get('show_file', False)
     exam_mode = data.get('exam_mode', 'normal')
     
-    # Сохраняем данные для повторения
-    # await state.update_data(
-    #     repeat_categories=selected_categories,
-    #     repeat_show_file=show_file,
-    #     repeat_exam_mode=exam_mode
-    # )
-    # Для сложных карточек сохраняем исходный список, а не получаем заново
+
     if exam_mode == 'difficult':
         original_difficult_notes = data.get('exam_notes', [])  # Сохраняем исходный список
         await state.update_data(
@@ -434,20 +406,20 @@ async def finish_exam(user_id: int, state: FSMContext):
     success_rate = (correct_answers / total_notes * 100) if total_notes > 0 else 0
     
     result_text = (
-        f"🎉 Экзамен завершен!\n\n"
+        f"💡 Экзамен завершен!\n\n"
         f"📊 Результаты:\n"
         f"✅ Правильных ответов: {correct_answers}\n"
         f"❌ Неправильных ответов: {wrong_answers}\n"
         f"📈 Успешность: {success_rate:.1f}%"
     )
     
-    # Создаем клавиатуру с кнопками повтора и главного меню
-    
-    
+ 
     builder = ReplyKeyboardBuilder()
     builder.button(text="🔄 Повторить экзамен")
-    builder.button(text="📋 Меню")
-    builder.adjust(2)  # 2 кнопки в одной строке
+    if wrong_notes:  # Показываем кнопку только если есть ошибки
+        builder.button(text="🔁 Экзамен по ошибкам")
+    builder.button(text="🧩 Меню")
+    builder.adjust(2)  # Автоматическое размещение кнопок
     
     finish_keyboard = builder.as_markup(resize_keyboard=True)
     
@@ -480,6 +452,43 @@ async def finish_exam(user_id: int, state: FSMContext):
     await state.set_state(ExamStates.finished)
 
 
+@exam_router.message(ExamStates.finished, F.text == "🔁 Экзамен по ошибкам")
+async def repeat_wrong_notes_exam(message: Message, state: FSMContext):
+    """Повтор экзамена только по карточкам с ошибками."""
+    data = await state.get_data()
+    wrong_notes = data.get('wrong_notes', [])
+    show_file = data.get('repeat_show_file', False)
+    
+    if not wrong_notes:
+        await message.answer("❌ Нет карточек с ошибками для повторения", reply_markup=main_note_kb())
+        await state.clear()
+        return
+    
+    # Перемешиваем карточки с ошибками
+    random.shuffle(wrong_notes)
+    
+    await state.update_data(
+        exam_notes=wrong_notes,
+        current_note_index=0,
+        correct_answers=0,
+        wrong_answers=0,
+        wrong_notes=[],  # очищаем для новой сессии
+        exam_mode="wrong_notes",  # новый режим
+        show_file=show_file
+    )
+    
+    await message.answer(
+        f"🔁 Начинаем экзамен по карточкам с ошибками!\n"
+        f"Всего карточек: {len(wrong_notes)}\n"
+        f"Показ файла: {'Да' if show_file else 'Нет'}\n\n"
+        f"Сосредоточьтесь на этих карточках - они требуют больше внимания!",
+        reply_markup=create_stop_exam_keyboard()
+    )
+    
+    await show_next_exam_question(message.from_user.id, state)
+    await state.set_state(ExamStates.in_exam)
+
+
 @exam_router.message(ExamStates.finished, F.text == "🔄 Повторить экзамен")
 async def repeat_exam_from_keyboard(message: Message, state: FSMContext):
     """Повтор экзамена с теми же настройками через кнопку клавиатуры."""
@@ -490,10 +499,11 @@ async def repeat_exam_from_keyboard(message: Message, state: FSMContext):
     
     if not selected_categories and exam_mode != 'difficult':
         await message.answer("❌ Нет данных для повторения экзамена",
-                             reply_markup=main_note_kb())
+                             reply_markup=main_mem_kb())
         await state.clear()
         return
-    
+
+
     await message.answer("🔄 Запускаю экзамен с теми же настройками...")
     
     if exam_mode == 'difficult':
@@ -548,7 +558,7 @@ async def repeat_exam_from_keyboard(message: Message, state: FSMContext):
         await state.set_state(ExamStates.in_exam)
 
 
-@exam_router.message(ExamStates.finished, F.text == "📋 Меню")
+@exam_router.message(ExamStates.finished, F.text == "🧩 Меню")
 async def main_menu_from_finished(message: Message, state: FSMContext):
     """Возврат в главное меню после завершения экзамена."""
     await message.answer(
@@ -573,7 +583,7 @@ async def show_wrong_note(call: CallbackQuery):
     
     # Формируем полный текст карточки
     full_card_text = (
-        f"📚 Карточка из ошибок:\n\n"
+        f"📝 Карточка из ошибок:\n\n"
         f"Категория: {note.get('category_name', 'Без категории')}\n"
         f"Название: {note.get('content_text', 'Без названия')}\n"
         f"Описание: {note.get('description', 'Отсутствует')}"

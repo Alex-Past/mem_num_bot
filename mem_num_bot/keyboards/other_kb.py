@@ -3,8 +3,9 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 def main_kb():
     kb_list = [
-        [KeyboardButton(text="📝 Карточки")],
-        [KeyboardButton(text="🧩 Мемори")]
+        [KeyboardButton(text="✏️ Карточки")],
+        [KeyboardButton(text="🧩 Мемори")],
+        [KeyboardButton(text="❔ Справка")]
     ]
     return ReplyKeyboardMarkup(
         keyboard=kb_list,
@@ -23,6 +24,17 @@ def stop_fsm():
         keyboard=kb_list,
         resize_keyboard=True,
         one_time_keyboard=True,
-        input_field_placeholder='Для того чтоб остановить сценарий FSM '
+        input_field_placeholder='Для того чтоб остановить создание '
         'нажми на одну из двух кнопок👇'
+    )
+
+def help_return():
+    kb_list = [
+                [KeyboardButton(text="🏠 Главное меню")]
+    ]
+    return ReplyKeyboardMarkup(
+        keyboard=kb_list,
+        resize_keyboard=True,
+        one_time_keyboard=True,
+        input_field_placeholder='Вернуться в главное меню 👇'
     )

@@ -22,10 +22,11 @@ class AddNoteStates(StatesGroup):
     check_state = State()
 
 
-@add_note_router.message(F.text == "📝 Карточки")
+@add_note_router.message(F.text == "✏️ Карточки")
 async def start_note(message: Message, state: FSMContext):
     await state.clear()
-    await message.answer('Ты в меню заметок. Выбери необходимое действие.',
+    await message.answer('Ты можешь создавать категории и наполнять их карточками '
+                         'с любым контентом: текст, фото, видео, аудио или файлы.',
                          reply_markup=main_note_kb())
 
 

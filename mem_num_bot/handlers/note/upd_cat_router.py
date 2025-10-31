@@ -37,7 +37,7 @@ async def confirm_edit_cat_text(message: Message, state: FSMContext):
     await update_category(category_id=cat_id, text_name=text)
     await state.clear()
     await message.answer(
-        f'Название категории с ID {cat_id} успешно изменен на "{text}"!',
+        f'Название категории успешно изменен на "{text}"!',
         reply_markup=main_note_kb()
     )
 
@@ -48,7 +48,7 @@ async def dell_check_process(call: CallbackQuery, state: FSMContext):
     category_id = call.data.replace('dell_cat_', '')
     await state.update_data(category_id=category_id)
     await call.message.answer(
-        f'Все заметки этой категории будут удалены!',
+        f'Все карточки этой категории будут удалены!',
         reply_markup=del_check()
     )
     await state.set_state(UPDNoteStates.check_state)
