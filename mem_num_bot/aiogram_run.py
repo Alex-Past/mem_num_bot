@@ -15,11 +15,13 @@ from handlers.note.view_cat_router import view_cat_router
 from handlers.note.upd_cat_router import upd_cat_router
 from handlers.start_router import start_router
 from handlers.help_router import help_router
+from handlers.admin_router import admin_router
 
 
 async def set_commands():
     commands = [
-        BotCommand(command='start', description='Старт'),        
+        BotCommand(command='start', description='Старт'),
+        # BotCommand(command='admin', description='Админ'),     
     ]
     await bot.set_my_commands(commands, BotCommandScopeDefault())
 
@@ -46,8 +48,9 @@ async def stop_bot():
             pass
 
 
-async def main():
+async def main():    
     dp.include_router(start_router)
+    dp.include_router(admin_router)
     dp.include_router(help_router)
     dp.include_router(add_note_router)
     dp.include_router(add_cat_router)

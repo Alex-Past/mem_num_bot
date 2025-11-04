@@ -4,7 +4,6 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Dict, Any, Optional
 
-# from create_bot import logger
 from .base import connection
 from .models import Category, User, Note
 
@@ -33,6 +32,28 @@ async def set_user(
     except SQLAlchemyError as e:
         logger.error(f"Ошибка при добавлении пользователя: {e}")
         await session.rollback()
+
+
+@connection
+async def get_total_users_count(session) -> int:
+    """Получить общее количество пользователей."""
+    try:
+        count = await session.scalar(select(func.count(User.id)))
+        return count
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка при получении количества пользователей: {e}")
+        return 0
+
+@connection
+async def get_all_users(session) -> List[int]:
+    """Получить список всех пользователей (user_id)."""
+    try:
+        result = await session.execute(select(User.id))
+        user_ids = [row[0] for row in result.all()]
+        return user_ids
+    except SQLAlchemyError as e:
+        logger.error(f"Ошибка при получении списка пользователей: {e}")
+        return []
 
 
 @connection
