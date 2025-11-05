@@ -172,11 +172,18 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
     """Запуск пассивной сессии."""
     user_id = call.from_user.id
     
-    # Останавливаем предыдущую сессию, если есть
+    # Останавливаем предыдущую сессию полностью
     if user_id in active_passive_sessions:
+        # Отменяем предыдущую задачу worker'а
+        if 'task' in active_passive_sessions[user_id]:
+            active_passive_sessions[user_id]['task'].cancel()
+            try:
+                await active_passive_sessions[user_id]['task']
+            except asyncio.CancelledError:
+                pass
         active_passive_sessions[user_id]['active'] = False
-        # Даем время на завершение предыдущей задачи
-        await asyncio.sleep(1)
+        # Даем время на завершение
+        await asyncio.sleep(0.5)
     
     # Получаем заметки для пассивного обучения
     notes = await get_notes_by_categories(
@@ -197,17 +204,20 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
     random.shuffle(shuffled_notes)
     
     # Создаем сессию с улучшенной логикой
-    active_passive_sessions[user_id] = {
+    session_data = {
         'active': True,
-        'all_notes': notes,  # Все карточки
-        'available_notes': shuffled_notes,  # Доступные для показа
-        'shown_notes': [],  # Показанные карточки
+        'all_notes': notes,
+        'available_notes': shuffled_notes,
+        'shown_notes': [],
         'interval': interval_seconds,
         'show_file': show_file,
         'last_message_id': None,
         'current_note': None,
-        'category_ids': category_ids
+        'category_ids': category_ids,
+        'task': None  # Добавляем поле для хранения задачи
     }
+    
+    active_passive_sessions[user_id] = session_data
     
     # Показываем информацию о запуске
     interval_text = {
@@ -229,11 +239,12 @@ async def start_passive_session(call: CallbackQuery, state: FSMContext, category
         reply_markup=create_stop_passive_keyboard()
     )
     
+    # Создаем и сохраняем задачу worker'а
+    task = asyncio.create_task(passive_worker(user_id))
+    active_passive_sessions[user_id]['task'] = task
+    
     # Запускаем первую карточку сразу
     await send_random_passive_card(user_id)
-    
-    # Запускаем периодическую отправку
-    asyncio.create_task(passive_worker(user_id))
     
     await state.set_state(PassiveStates.in_session)
 
@@ -249,8 +260,13 @@ def create_stop_passive_keyboard():
 
 async def passive_worker(user_id: int):
     """Фоновая задача для отправки карточек по расписанию."""
-    while user_id in active_passive_sessions and active_passive_sessions[user_id]['active']:
-        try:
+    try:
+        while True:
+            # Проверяем существование и активность сессии
+            if (user_id not in active_passive_sessions or 
+                not active_passive_sessions[user_id]['active']):
+                break
+                
             session = active_passive_sessions[user_id]
             interval = session.get('interval', 3600)
             
@@ -268,9 +284,10 @@ async def passive_worker(user_id: int):
                 print(f"🚀 [{user_id}] Worker: отправляю карточку")
                 await send_random_passive_card(user_id)
                     
-        except Exception as e:
-            print(f"Ошибка в passive_worker: {e}")
-            break
+    except asyncio.CancelledError:
+        print(f"✅ [{user_id}] Worker: задача отменена")
+    except Exception as e:
+        print(f"❌ Ошибка в passive_worker для пользователя {user_id}: {e}")
 
 
 async def send_random_passive_card(user_id: int):
@@ -280,6 +297,11 @@ async def send_random_passive_card(user_id: int):
     
     session = active_passive_sessions[user_id]
     if not session['active']:
+        return
+    
+    # Проверяем, не отправляется ли уже карточка
+    if session.get('current_note'):
+        print(f"⚠️ [{user_id}] Пропускаем отправку - карточка уже активна")
         return
     
     # Если доступные карточки закончились, перемешиваем заново
@@ -347,7 +369,17 @@ async def stop_passive_learning(message: Message, state: FSMContext):
     user_id = message.from_user.id
     
     if user_id in active_passive_sessions:
-        active_passive_sessions[user_id]['active'] = False
+        session = active_passive_sessions[user_id]
+        session['active'] = False
+        
+        # Отменяем задачу worker'а
+        if 'task' in session and session['task']:
+            session['task'].cancel()
+            try:
+                await session['task']
+            except asyncio.CancelledError:
+                pass
+        
         del active_passive_sessions[user_id]
     
     await message.answer(
@@ -445,3 +477,21 @@ async def check_passive_answer(message: Message, state: FSMContext):
     
     # Очищаем текущую карточку из сессии
     session['current_note'] = None
+
+
+async def cancel_all_passive_sessions():
+    """Отменяет все активные пассивные сессии при завершении работы бота."""
+    print("🛑 Останавливаем все активные пассивные сессии...")
+    
+    for user_id, session in active_passive_sessions.items():
+        session['active'] = False
+        if 'task' in session and session['task']:
+            session['task'].cancel()
+            try:
+                await session['task']
+            except asyncio.CancelledError:
+                pass
+        print(f"✅ Сессия пользователя {user_id} остановлена")
+    
+    active_passive_sessions.clear()
+    print("✅ Все пассивные сессии остановлены")    

@@ -5,7 +5,7 @@ from aiogram.types import BotCommand, BotCommandScopeDefault
 from create_bot import bot, dp, admins
 from data_base.base import create_tables
 from handlers.memory.exam_router import exam_router
-from handlers.memory.passive_router import passive_router
+from handlers.memory.passive_router import cancel_all_passive_sessions, passive_router
 from handlers.note.add_cat_router import add_cat_router
 from handlers.note.add_note_router import add_note_router
 from handlers.note.find_note_router import find_note_router
@@ -40,7 +40,7 @@ async def start_bot():
 
 async def stop_bot():
 
-    
+    await cancel_all_passive_sessions()
     for admin_id in admins:
         try:
             await bot.send_message(admin_id, 'Бот остановлен.')
