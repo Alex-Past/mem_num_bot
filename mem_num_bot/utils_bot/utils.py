@@ -134,8 +134,8 @@ async def send_many_notes(all_notes, bot, user_id):
             cat_name = category['category_name']
             text = (f"{note['created_at'].strftime('%d-%m-%Y')}\n"
                     f"✨ Категория: <u>{cat_name if cat_name else ''}</u>\n\n"
-                    f"<b>{note['content_text'] if note['content_text'] else ''}</b>\n\n"
-                    f"<b>{note['description'] if note['description'] else ''}</b>\n\n"
+                    f"<b>{note['content_text'] if note['content_text'] else 'Без названия'}</b>\n\n"
+                    f"<b>{note['description'] if note['description'] else 'Без описания'}</b>\n\n"
                     "📚")
             await send_message_user(
                 bot=bot,

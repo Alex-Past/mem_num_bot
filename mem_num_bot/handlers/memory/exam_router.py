@@ -281,10 +281,13 @@ async def show_next_exam_question(user_id: int, state: FSMContext):
         return
     
     current_note = exam_notes[current_index]
+    c_text = current_note.get('content_text', '')
+    if c_text == None:
+        c_text = "Без названия"
     
     # Формируем текст для карточки
     card_text = (f"📝 Карточка {current_index + 1}/{len(exam_notes)}\n\n"
-                 f"{current_note.get('content_text', 'Без названия')}"
+                 f"{c_text}"
                  "\n\nНапиши описание этой карточки:")
     
    
@@ -432,8 +435,8 @@ async def finish_exam(user_id: int, state: FSMContext):
         for note in wrong_notes:
             # Обрезаем длинное название для красоты
             note_title = note.get('content_text', 'Без названия')
-            if len(note_title) > 50:
-                note_title = note_title[:50] + "..."
+            if note_title == None:
+                note_title = "Без названия"
                 
             # Создаем кнопку для каждой карточки
             show_button = InlineKeyboardButton(
@@ -580,12 +583,14 @@ async def show_wrong_note(call: CallbackQuery):
     if not note:
         await call.answer("❌ Карточка не найдена", show_alert=True)
         return
-    
+    name = note.get('content_text', 'Без названия')
+    if name == None:
+        name = "Без названия"
     # Формируем полный текст карточки
     full_card_text = (
         f"📝 Карточка из ошибок:\n\n"
         f"Категория: {note.get('category_name', 'Без категории')}\n"
-        f"Название: {note.get('content_text', 'Без названия')}\n"
+        f"Название: {name}\n"
         f"Описание: {note.get('description', 'Отсутствует')}"
     )
     

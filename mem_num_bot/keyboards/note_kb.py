@@ -68,7 +68,7 @@ def rule_note_kb(note_id: int, has_file: bool = False):
     if has_file:
         buttons.append([InlineKeyboardButton(text="🗑️ Удалить файл", callback_data=f'delete_file_{note_id}')])
     
-    buttons.append([InlineKeyboardButton(text="Удалить", callback_data=f'dell_note_{note_id}')])
+    buttons.append([InlineKeyboardButton(text="Удалить карточку", callback_data=f'dell_note_{note_id}')])
     
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 

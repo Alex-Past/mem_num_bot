@@ -262,7 +262,6 @@ async def passive_worker(user_id: int):
     """Фоновая задача для отправки карточек по расписанию."""
     try:
         while True:
-            # Проверяем существование и активность сессии
             if (user_id not in active_passive_sessions or 
                 not active_passive_sessions[user_id]['active']):
                 break
@@ -270,24 +269,24 @@ async def passive_worker(user_id: int):
             session = active_passive_sessions[user_id]
             interval = session.get('interval', 3600)
             
-            # Логирование для отладки
-            print(f"🕒 [{user_id}] Worker: жду {interval} сек, active={session['active']}, current_note={session.get('current_note') is not None}")
-            
             # Ждем выбранный интервал
             await asyncio.sleep(interval)
             
-            # Проверяем, активна ли еще сессия и нет ли активной карточки
             if (user_id in active_passive_sessions and 
-                active_passive_sessions[user_id]['active'] and
-                not session.get('current_note')):
+                active_passive_sessions[user_id]['active']):
                 
-                print(f"🚀 [{user_id}] Worker: отправляю карточку")
+                # Если есть "зависшая" карточка без ответа, очищаем ее
+                if session.get('current_note'):
+                    print(f"⚠️ [{user_id}] Очищаем неотвеченную карточку")
+                    session['current_note'] = None
+                
+                print(f"🚀 [{user_id}] Отправляю новую карточку")
                 await send_random_passive_card(user_id)
                     
     except asyncio.CancelledError:
         print(f"✅ [{user_id}] Worker: задача отменена")
     except Exception as e:
-        print(f"❌ Ошибка в passive_worker для пользователя {user_id}: {e}")
+        print(f"❌ Ошибка в passive_worker: {e}")
 
 
 async def send_random_passive_card(user_id: int):
@@ -327,7 +326,10 @@ async def send_random_passive_card(user_id: int):
     show_file = session.get('show_file', False)
     
     # Формируем текст для карточки
-    card_text = f"📖 Пассивное обучение\n\n{random_note.get('content_text', 'Без названия')}\n\nНапиши описание этой карточки:"
+    card_name = random_note.get('content_text', 'Без названия')
+    if card_name == None:
+        card_name = 'Без названия'
+    card_text = f"📖 Пассивное обучение\n\n{card_name}\n\nНапиши описание этой карточки:"
     
     if show_file and random_note.get('file_id'):
         try:
